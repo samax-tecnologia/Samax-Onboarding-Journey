@@ -119,19 +119,35 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(journeyReducer, defaultState);
 
   useEffect(() => {
+    const sanitize = (raw: unknown): JourneyState => {
+      const obj = (raw && typeof raw === "object" ? raw : {}) as Partial<JourneyState>;
+      return {
+        ...defaultState,
+        ...obj,
+        completedTaskIds: Array.isArray(obj.completedTaskIds) ? obj.completedTaskIds.filter((x): x is string => typeof x === "string") : [],
+        phaseStatuses: obj.phaseStatuses && typeof obj.phaseStatuses === "object" ? obj.phaseStatuses : {},
+        phaseNotes: obj.phaseNotes && typeof obj.phaseNotes === "object" ? obj.phaseNotes : {},
+        phaseBlockers: obj.phaseBlockers && typeof obj.phaseBlockers === "object" ? obj.phaseBlockers : {},
+        phaseUpdatedAt: obj.phaseUpdatedAt && typeof obj.phaseUpdatedAt === "object" ? obj.phaseUpdatedAt : {},
+        opportunityDecisions: obj.opportunityDecisions && typeof obj.opportunityDecisions === "object" ? obj.opportunityDecisions : {},
+        capturedValue: { ...defaultState.capturedValue, ...(obj.capturedValue ?? {}) },
+        customerProfile: { ...defaultState.customerProfile, ...(obj.customerProfile ?? {}) },
+      };
+    };
+
     const savedV2 = localStorage.getItem("samax-journey-v2");
     if (savedV2) {
       try {
-        dispatch({ type: "LOAD_STATE", payload: JSON.parse(savedV2) });
+        dispatch({ type: "LOAD_STATE", payload: sanitize(JSON.parse(savedV2)) });
       } catch (e) {
-        console.error(e);
+        console.error("Failed to load journey state", e);
       }
     } else {
       const savedV1 = localStorage.getItem("samax-onboarding-progress");
       if (savedV1) {
         try {
           const completedTaskIds = JSON.parse(savedV1);
-          const migrated: JourneyState = { ...defaultState, completedTaskIds };
+          const migrated = sanitize({ completedTaskIds });
           dispatch({ type: "LOAD_STATE", payload: migrated });
           localStorage.setItem("samax-journey-v2", JSON.stringify(migrated));
         } catch (e) {}
