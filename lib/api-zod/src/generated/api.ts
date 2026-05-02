@@ -14,3 +14,236 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Get available global filter options
+ */
+export const GetFocusFiltersResponse = zod.object({
+  providers: zod.array(zod.string()),
+  teams: zod.array(zod.string()),
+  products: zod.array(zod.string()),
+  categories: zod.array(zod.string()),
+  currency: zod.string(),
+  periodStart: zod.string(),
+  periodEnd: zod.string(),
+});
+
+/**
+ * @summary Top-of-page summary (budget vs forecast and savings totals)
+ */
+export const getFocusSummaryQueryCostTypeDefault = `EffectiveCost`;
+
+export const GetFocusSummaryQueryParams = zod.object({
+  startDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart"),
+  endDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd"),
+  providers: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of FOCUS ProviderName values"),
+  teams: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Team values"),
+  products: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Product values"),
+  costType: zod
+    .enum(["BilledCost", "EffectiveCost"])
+    .default(getFocusSummaryQueryCostTypeDefault)
+    .describe("Which FOCUS cost column to aggregate"),
+});
+
+export const GetFocusSummaryResponse = zod.object({
+  currency: zod.string(),
+  periodStart: zod.string(),
+  periodEnd: zod.string(),
+  costType: zod.string(),
+  actualSpend: zod.number(),
+  forecastSpend: zod.number(),
+  budget: zod.number(),
+  percentConsumed: zod.number(),
+  projectedDelta: zod.number().describe("forecast minus budget"),
+  savingsTotal: zod.number(),
+  savingsCount: zod.number(),
+  topSavings: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      category: zod
+        .string()
+        .describe("e.g. idle, rightsizing, commitment, untagged, storage-tier"),
+      provider: zod.string(),
+      service: zod.string(),
+      resourceId: zod.string().optional(),
+      team: zod.string(),
+      product: zod.string(),
+      monthlySavings: zod.number(),
+      currency: zod.string().optional(),
+      recommendedAction: zod.string(),
+      effort: zod.enum(["low", "medium", "high"]),
+      details: zod.string().optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Past costs trend, broken down by provider
+ */
+export const getFocusTimeSeriesQueryCostTypeDefault = `EffectiveCost`;
+
+export const GetFocusTimeSeriesQueryParams = zod.object({
+  months: zod.union([zod.literal(3), zod.literal(6), zod.literal(12)]),
+  providers: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of FOCUS ProviderName values"),
+  teams: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Team values"),
+  products: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Product values"),
+  costType: zod
+    .enum(["BilledCost", "EffectiveCost"])
+    .default(getFocusTimeSeriesQueryCostTypeDefault)
+    .describe("Which FOCUS cost column to aggregate"),
+});
+
+export const GetFocusTimeSeriesResponse = zod.object({
+  currency: zod.string(),
+  costType: zod.string(),
+  points: zod.array(
+    zod.object({
+      period: zod.string().describe("YYYY-MM"),
+      total: zod.number(),
+      byProvider: zod.record(zod.string(), zod.number()),
+    }),
+  ),
+  momDelta: zod.number().describe("latest month minus previous month"),
+  momDeltaPercent: zod.number(),
+  totalRange: zod.number(),
+  previousRangeTotal: zod.number(),
+});
+
+/**
+ * @summary Cost broken down by a FOCUS dimension
+ */
+export const getFocusBreakdownQueryLimitMax = 50;
+
+export const getFocusBreakdownQueryCostTypeDefault = `EffectiveCost`;
+
+export const GetFocusBreakdownQueryParams = zod.object({
+  dimension: zod.enum([
+    "serviceCategory",
+    "chargeCategory",
+    "serviceName",
+    "team",
+    "product",
+    "provider",
+  ]),
+  parent: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Optional parent value to drill down (e.g. ServiceCategory when listing services)",
+    ),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(getFocusBreakdownQueryLimitMax)
+    .optional(),
+  startDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart"),
+  endDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd"),
+  providers: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of FOCUS ProviderName values"),
+  teams: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Team values"),
+  products: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Product values"),
+  costType: zod
+    .enum(["BilledCost", "EffectiveCost"])
+    .default(getFocusBreakdownQueryCostTypeDefault)
+    .describe("Which FOCUS cost column to aggregate"),
+});
+
+export const GetFocusBreakdownResponse = zod.object({
+  dimension: zod.string(),
+  parent: zod.string().optional(),
+  currency: zod.string(),
+  costType: zod.string(),
+  totalAmount: zod.number(),
+  items: zod.array(
+    zod.object({
+      key: zod.string(),
+      label: zod.string(),
+      amount: zod.number(),
+      percent: zod.number(),
+      sparkline: zod.array(zod.number()).optional(),
+      meta: zod.record(zod.string(), zod.string()).optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Identified savings opportunities
+ */
+export const GetFocusSavingsQueryParams = zod.object({
+  providers: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of FOCUS ProviderName values"),
+  teams: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Team values"),
+  products: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated list of x_Product values"),
+});
+
+export const GetFocusSavingsResponse = zod.object({
+  currency: zod.string(),
+  totalMonthlySavings: zod.number(),
+  count: zod.number(),
+  opportunities: zod.array(
+    zod.object({
+      id: zod.string(),
+      title: zod.string(),
+      category: zod
+        .string()
+        .describe("e.g. idle, rightsizing, commitment, untagged, storage-tier"),
+      provider: zod.string(),
+      service: zod.string(),
+      resourceId: zod.string().optional(),
+      team: zod.string(),
+      product: zod.string(),
+      monthlySavings: zod.number(),
+      currency: zod.string().optional(),
+      recommendedAction: zod.string(),
+      effort: zod.enum(["low", "medium", "high"]),
+      details: zod.string().optional(),
+    }),
+  ),
+});

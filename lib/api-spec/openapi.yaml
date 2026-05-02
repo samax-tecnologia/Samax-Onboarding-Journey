@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: focus
+    description: FinOps FOCUS dashboard operations
 paths:
   /healthz:
     get:
@@ -24,13 +26,331 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /focus/filters:
+    get:
+      operationId: getFocusFilters
+      tags: [focus]
+      summary: Get available global filter options
+      responses:
+        "200":
+          description: Filter options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusFilters"
+
+  /focus/summary:
+    get:
+      operationId: getFocusSummary
+      tags: [focus]
+      summary: Top-of-page summary (budget vs forecast and savings totals)
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+        - $ref: "#/components/parameters/ProvidersParam"
+        - $ref: "#/components/parameters/TeamsParam"
+        - $ref: "#/components/parameters/ProductsParam"
+        - $ref: "#/components/parameters/CostTypeParam"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusSummary"
+
+  /focus/timeseries:
+    get:
+      operationId: getFocusTimeSeries
+      tags: [focus]
+      summary: Past costs trend, broken down by provider
+      parameters:
+        - in: query
+          name: months
+          required: true
+          schema:
+            type: integer
+            enum: [3, 6, 12]
+        - $ref: "#/components/parameters/ProvidersParam"
+        - $ref: "#/components/parameters/TeamsParam"
+        - $ref: "#/components/parameters/ProductsParam"
+        - $ref: "#/components/parameters/CostTypeParam"
+      responses:
+        "200":
+          description: Time series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusTimeSeries"
+
+  /focus/breakdown:
+    get:
+      operationId: getFocusBreakdown
+      tags: [focus]
+      summary: Cost broken down by a FOCUS dimension
+      parameters:
+        - in: query
+          name: dimension
+          required: true
+          schema:
+            type: string
+            enum:
+              [serviceCategory, chargeCategory, serviceName, team, product, provider]
+        - in: query
+          name: parent
+          required: false
+          description: Optional parent value to drill down (e.g. ServiceCategory when listing services)
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+        - $ref: "#/components/parameters/ProvidersParam"
+        - $ref: "#/components/parameters/TeamsParam"
+        - $ref: "#/components/parameters/ProductsParam"
+        - $ref: "#/components/parameters/CostTypeParam"
+      responses:
+        "200":
+          description: Breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusBreakdown"
+
+  /focus/savings:
+    get:
+      operationId: getFocusSavings
+      tags: [focus]
+      summary: Identified savings opportunities
+      parameters:
+        - $ref: "#/components/parameters/ProvidersParam"
+        - $ref: "#/components/parameters/TeamsParam"
+        - $ref: "#/components/parameters/ProductsParam"
+      responses:
+        "200":
+          description: Savings opportunities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusSavings"
+
 components:
+  parameters:
+    StartDateParam:
+      in: query
+      name: startDate
+      required: false
+      description: Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+      schema:
+        type: string
+    EndDateParam:
+      in: query
+      name: endDate
+      required: false
+      description: Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+      schema:
+        type: string
+    ProvidersParam:
+      in: query
+      name: providers
+      required: false
+      description: Comma-separated list of FOCUS ProviderName values
+      schema:
+        type: string
+    TeamsParam:
+      in: query
+      name: teams
+      required: false
+      description: Comma-separated list of x_Team values
+      schema:
+        type: string
+    ProductsParam:
+      in: query
+      name: products
+      required: false
+      description: Comma-separated list of x_Product values
+      schema:
+        type: string
+    CostTypeParam:
+      in: query
+      name: costType
+      required: false
+      description: Which FOCUS cost column to aggregate
+      schema:
+        type: string
+        enum: [BilledCost, EffectiveCost]
+        default: EffectiveCost
+
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    FocusFilters:
+      type: object
+      required: [providers, teams, products, categories, currency, periodStart, periodEnd]
+      properties:
+        providers:
+          type: array
+          items: { type: string }
+        teams:
+          type: array
+          items: { type: string }
+        products:
+          type: array
+          items: { type: string }
+        categories:
+          type: array
+          items: { type: string }
+        currency:
+          type: string
+        periodStart:
+          type: string
+        periodEnd:
+          type: string
+
+    SavingOpportunity:
+      type: object
+      required:
+        [
+          id,
+          title,
+          category,
+          provider,
+          service,
+          monthlySavings,
+          recommendedAction,
+          effort,
+          team,
+          product,
+        ]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category:
+          type: string
+          description: e.g. idle, rightsizing, commitment, untagged, storage-tier
+        provider: { type: string }
+        service: { type: string }
+        resourceId: { type: string }
+        team: { type: string }
+        product: { type: string }
+        monthlySavings: { type: number }
+        currency: { type: string }
+        recommendedAction: { type: string }
+        effort:
+          type: string
+          enum: [low, medium, high]
+        details: { type: string }
+
+    FocusSummary:
+      type: object
+      required:
+        [
+          currency,
+          periodStart,
+          periodEnd,
+          actualSpend,
+          forecastSpend,
+          budget,
+          percentConsumed,
+          projectedDelta,
+          savingsTotal,
+          savingsCount,
+          topSavings,
+          costType,
+        ]
+      properties:
+        currency: { type: string }
+        periodStart: { type: string }
+        periodEnd: { type: string }
+        costType: { type: string }
+        actualSpend: { type: number }
+        forecastSpend: { type: number }
+        budget: { type: number }
+        percentConsumed: { type: number }
+        projectedDelta: { type: number, description: forecast minus budget }
+        savingsTotal: { type: number }
+        savingsCount: { type: integer }
+        topSavings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavingOpportunity"
+
+    TimeSeriesPoint:
+      type: object
+      required: [period, total, byProvider]
+      properties:
+        period: { type: string, description: YYYY-MM }
+        total: { type: number }
+        byProvider:
+          type: object
+          additionalProperties:
+            type: number
+
+    FocusTimeSeries:
+      type: object
+      required: [currency, costType, points, momDelta, momDeltaPercent, totalRange, previousRangeTotal]
+      properties:
+        currency: { type: string }
+        costType: { type: string }
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSeriesPoint"
+        momDelta: { type: number, description: latest month minus previous month }
+        momDeltaPercent: { type: number }
+        totalRange: { type: number }
+        previousRangeTotal: { type: number }
+
+    BreakdownItem:
+      type: object
+      required: [key, label, amount, percent]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        amount: { type: number }
+        percent: { type: number }
+        sparkline:
+          type: array
+          items: { type: number }
+        meta:
+          type: object
+          additionalProperties:
+            type: string
+
+    FocusBreakdown:
+      type: object
+      required: [dimension, currency, costType, totalAmount, items]
+      properties:
+        dimension: { type: string }
+        parent: { type: string }
+        currency: { type: string }
+        costType: { type: string }
+        totalAmount: { type: number }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BreakdownItem"
+
+    FocusSavings:
+      type: object
+      required: [currency, totalMonthlySavings, count, opportunities]
+      properties:
+        currency: { type: string }
+        totalMonthlySavings: { type: number }
+        count: { type: integer }
+        opportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavingOpportunity"

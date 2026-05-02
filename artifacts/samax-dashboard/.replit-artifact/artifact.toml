@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/dashboard/"
+title = "Samax Dashboard"
+version = "1.0.0"
+id = "artifacts/samax-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/dashboard/" ]
+localPort = 23600
+
+[services.development]
+run = "pnpm --filter @workspace/samax-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/samax-dashboard", "run", "build" ]
+publicDir = "artifacts/samax-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23600"
+BASE_PATH = "/dashboard/"

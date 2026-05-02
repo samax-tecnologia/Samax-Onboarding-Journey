@@ -8,3 +8,255 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface FocusFilters {
+  providers: string[];
+  teams: string[];
+  products: string[];
+  categories: string[];
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export type SavingOpportunityEffort =
+  (typeof SavingOpportunityEffort)[keyof typeof SavingOpportunityEffort];
+
+export const SavingOpportunityEffort = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface SavingOpportunity {
+  id: string;
+  title: string;
+  /** e.g. idle, rightsizing, commitment, untagged, storage-tier */
+  category: string;
+  provider: string;
+  service: string;
+  resourceId?: string;
+  team: string;
+  product: string;
+  monthlySavings: number;
+  currency?: string;
+  recommendedAction: string;
+  effort: SavingOpportunityEffort;
+  details?: string;
+}
+
+export interface FocusSummary {
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+  costType: string;
+  actualSpend: number;
+  forecastSpend: number;
+  budget: number;
+  percentConsumed: number;
+  /** forecast minus budget */
+  projectedDelta: number;
+  savingsTotal: number;
+  savingsCount: number;
+  topSavings: SavingOpportunity[];
+}
+
+export type TimeSeriesPointByProvider = { [key: string]: number };
+
+export interface TimeSeriesPoint {
+  /** YYYY-MM */
+  period: string;
+  total: number;
+  byProvider: TimeSeriesPointByProvider;
+}
+
+export interface FocusTimeSeries {
+  currency: string;
+  costType: string;
+  points: TimeSeriesPoint[];
+  /** latest month minus previous month */
+  momDelta: number;
+  momDeltaPercent: number;
+  totalRange: number;
+  previousRangeTotal: number;
+}
+
+export type BreakdownItemMeta = { [key: string]: string };
+
+export interface BreakdownItem {
+  key: string;
+  label: string;
+  amount: number;
+  percent: number;
+  sparkline?: number[];
+  meta?: BreakdownItemMeta;
+}
+
+export interface FocusBreakdown {
+  dimension: string;
+  parent?: string;
+  currency: string;
+  costType: string;
+  totalAmount: number;
+  items: BreakdownItem[];
+}
+
+export interface FocusSavings {
+  currency: string;
+  totalMonthlySavings: number;
+  count: number;
+  opportunities: SavingOpportunity[];
+}
+
+/**
+ * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+ */
+export type StartDateParamParameter = string;
+
+/**
+ * Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+ */
+export type EndDateParamParameter = string;
+
+/**
+ * Comma-separated list of FOCUS ProviderName values
+ */
+export type ProvidersParamParameter = string;
+
+/**
+ * Comma-separated list of x_Team values
+ */
+export type TeamsParamParameter = string;
+
+/**
+ * Comma-separated list of x_Product values
+ */
+export type ProductsParamParameter = string;
+
+export type CostTypeParamParameter =
+  (typeof CostTypeParamParameter)[keyof typeof CostTypeParamParameter];
+
+export const CostTypeParamParameter = {
+  BilledCost: "BilledCost",
+  EffectiveCost: "EffectiveCost",
+} as const;
+
+export type GetFocusSummaryParams = {
+  /**
+   * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+   */
+  startDate?: StartDateParamParameter;
+  /**
+   * Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+   */
+  endDate?: EndDateParamParameter;
+  /**
+   * Comma-separated list of FOCUS ProviderName values
+   */
+  providers?: ProvidersParamParameter;
+  /**
+   * Comma-separated list of x_Team values
+   */
+  teams?: TeamsParamParameter;
+  /**
+   * Comma-separated list of x_Product values
+   */
+  products?: ProductsParamParameter;
+  /**
+   * Which FOCUS cost column to aggregate
+   */
+  costType?: CostTypeParamParameter;
+};
+
+export type GetFocusTimeSeriesParams = {
+  months: GetFocusTimeSeriesMonths;
+  /**
+   * Comma-separated list of FOCUS ProviderName values
+   */
+  providers?: ProvidersParamParameter;
+  /**
+   * Comma-separated list of x_Team values
+   */
+  teams?: TeamsParamParameter;
+  /**
+   * Comma-separated list of x_Product values
+   */
+  products?: ProductsParamParameter;
+  /**
+   * Which FOCUS cost column to aggregate
+   */
+  costType?: CostTypeParamParameter;
+};
+
+export type GetFocusTimeSeriesMonths =
+  (typeof GetFocusTimeSeriesMonths)[keyof typeof GetFocusTimeSeriesMonths];
+
+export const GetFocusTimeSeriesMonths = {
+  NUMBER_3: 3,
+  NUMBER_6: 6,
+  NUMBER_12: 12,
+} as const;
+
+export type GetFocusBreakdownParams = {
+  dimension: GetFocusBreakdownDimension;
+  /**
+   * Optional parent value to drill down (e.g. ServiceCategory when listing services)
+   */
+  parent?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
+  /**
+   * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+   */
+  startDate?: StartDateParamParameter;
+  /**
+   * Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+   */
+  endDate?: EndDateParamParameter;
+  /**
+   * Comma-separated list of FOCUS ProviderName values
+   */
+  providers?: ProvidersParamParameter;
+  /**
+   * Comma-separated list of x_Team values
+   */
+  teams?: TeamsParamParameter;
+  /**
+   * Comma-separated list of x_Product values
+   */
+  products?: ProductsParamParameter;
+  /**
+   * Which FOCUS cost column to aggregate
+   */
+  costType?: CostTypeParamParameter;
+};
+
+export type GetFocusBreakdownDimension =
+  (typeof GetFocusBreakdownDimension)[keyof typeof GetFocusBreakdownDimension];
+
+export const GetFocusBreakdownDimension = {
+  serviceCategory: "serviceCategory",
+  chargeCategory: "chargeCategory",
+  serviceName: "serviceName",
+  team: "team",
+  product: "product",
+  provider: "provider",
+} as const;
+
+export type GetFocusSavingsParams = {
+  /**
+   * Comma-separated list of FOCUS ProviderName values
+   */
+  providers?: ProvidersParamParameter;
+  /**
+   * Comma-separated list of x_Team values
+   */
+  teams?: TeamsParamParameter;
+  /**
+   * Comma-separated list of x_Product values
+   */
+  products?: ProductsParamParameter;
+};

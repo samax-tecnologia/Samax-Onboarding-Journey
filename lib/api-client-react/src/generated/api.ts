@@ -13,7 +13,18 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  FocusBreakdown,
+  FocusFilters,
+  FocusSavings,
+  FocusSummary,
+  FocusTimeSeries,
+  GetFocusBreakdownParams,
+  GetFocusSavingsParams,
+  GetFocusSummaryParams,
+  GetFocusTimeSeriesParams,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +103,463 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get available global filter options
+ */
+export const getGetFocusFiltersUrl = () => {
+  return `/api/focus/filters`;
+};
+
+export const getFocusFilters = async (
+  options?: RequestInit,
+): Promise<FocusFilters> => {
+  return customFetch<FocusFilters>(getGetFocusFiltersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFocusFiltersQueryKey = () => {
+  return [`/api/focus/filters`] as const;
+};
+
+export const getGetFocusFiltersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFocusFilters>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusFilters>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFocusFiltersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFocusFilters>>> = ({
+    signal,
+  }) => getFocusFilters({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusFilters>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFocusFiltersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFocusFilters>>
+>;
+export type GetFocusFiltersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get available global filter options
+ */
+
+export function useGetFocusFilters<
+  TData = Awaited<ReturnType<typeof getFocusFilters>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusFilters>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFocusFiltersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Top-of-page summary (budget vs forecast and savings totals)
+ */
+export const getGetFocusSummaryUrl = (params?: GetFocusSummaryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/focus/summary?${stringifiedParams}`
+    : `/api/focus/summary`;
+};
+
+export const getFocusSummary = async (
+  params?: GetFocusSummaryParams,
+  options?: RequestInit,
+): Promise<FocusSummary> => {
+  return customFetch<FocusSummary>(getGetFocusSummaryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFocusSummaryQueryKey = (params?: GetFocusSummaryParams) => {
+  return [`/api/focus/summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFocusSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFocusSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFocusSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFocusSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFocusSummary>>> = ({
+    signal,
+  }) => getFocusSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFocusSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFocusSummary>>
+>;
+export type GetFocusSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Top-of-page summary (budget vs forecast and savings totals)
+ */
+
+export function useGetFocusSummary<
+  TData = Awaited<ReturnType<typeof getFocusSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFocusSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFocusSummaryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Past costs trend, broken down by provider
+ */
+export const getGetFocusTimeSeriesUrl = (params: GetFocusTimeSeriesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/focus/timeseries?${stringifiedParams}`
+    : `/api/focus/timeseries`;
+};
+
+export const getFocusTimeSeries = async (
+  params: GetFocusTimeSeriesParams,
+  options?: RequestInit,
+): Promise<FocusTimeSeries> => {
+  return customFetch<FocusTimeSeries>(getGetFocusTimeSeriesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFocusTimeSeriesQueryKey = (
+  params?: GetFocusTimeSeriesParams,
+) => {
+  return [`/api/focus/timeseries`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFocusTimeSeriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFocusTimeSeries>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetFocusTimeSeriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusTimeSeries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetFocusTimeSeriesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFocusTimeSeries>>
+  > = ({ signal }) => getFocusTimeSeries(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusTimeSeries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFocusTimeSeriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFocusTimeSeries>>
+>;
+export type GetFocusTimeSeriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Past costs trend, broken down by provider
+ */
+
+export function useGetFocusTimeSeries<
+  TData = Awaited<ReturnType<typeof getFocusTimeSeries>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetFocusTimeSeriesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusTimeSeries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFocusTimeSeriesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Cost broken down by a FOCUS dimension
+ */
+export const getGetFocusBreakdownUrl = (params: GetFocusBreakdownParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/focus/breakdown?${stringifiedParams}`
+    : `/api/focus/breakdown`;
+};
+
+export const getFocusBreakdown = async (
+  params: GetFocusBreakdownParams,
+  options?: RequestInit,
+): Promise<FocusBreakdown> => {
+  return customFetch<FocusBreakdown>(getGetFocusBreakdownUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFocusBreakdownQueryKey = (
+  params?: GetFocusBreakdownParams,
+) => {
+  return [`/api/focus/breakdown`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFocusBreakdownQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFocusBreakdown>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetFocusBreakdownParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusBreakdown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetFocusBreakdownQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFocusBreakdown>>
+  > = ({ signal }) => getFocusBreakdown(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusBreakdown>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFocusBreakdownQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFocusBreakdown>>
+>;
+export type GetFocusBreakdownQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Cost broken down by a FOCUS dimension
+ */
+
+export function useGetFocusBreakdown<
+  TData = Awaited<ReturnType<typeof getFocusBreakdown>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetFocusBreakdownParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusBreakdown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFocusBreakdownQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Identified savings opportunities
+ */
+export const getGetFocusSavingsUrl = (params?: GetFocusSavingsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/focus/savings?${stringifiedParams}`
+    : `/api/focus/savings`;
+};
+
+export const getFocusSavings = async (
+  params?: GetFocusSavingsParams,
+  options?: RequestInit,
+): Promise<FocusSavings> => {
+  return customFetch<FocusSavings>(getGetFocusSavingsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFocusSavingsQueryKey = (params?: GetFocusSavingsParams) => {
+  return [`/api/focus/savings`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFocusSavingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFocusSavings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFocusSavingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusSavings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFocusSavingsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFocusSavings>>> = ({
+    signal,
+  }) => getFocusSavings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFocusSavings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFocusSavingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFocusSavings>>
+>;
+export type GetFocusSavingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Identified savings opportunities
+ */
+
+export function useGetFocusSavings<
+  TData = Awaited<ReturnType<typeof getFocusSavings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFocusSavingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFocusSavings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFocusSavingsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
