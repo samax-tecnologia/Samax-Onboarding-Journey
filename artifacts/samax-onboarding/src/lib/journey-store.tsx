@@ -190,19 +190,21 @@ export function useJourney() {
   const getJourneyHealth = () => {
     const totalPhases = PHASES.length;
     let completedPhases = 0;
-    let currentPhase = "1.1";
+    let firstIncomplete: string | null = null;
     let lastActivity = "";
 
     PHASES.forEach(phase => {
       const isComplete = phase.tasks.every(t => state.completedTaskIds.includes(t.id));
       if (isComplete) completedPhases++;
-      else if (currentPhase === "1.1") currentPhase = phase.id; // First incomplete
-      
+      else if (firstIncomplete === null) firstIncomplete = phase.id;
+
       const updated = state.phaseUpdatedAt[phase.id];
       if (updated && (!lastActivity || updated > lastActivity)) {
         lastActivity = updated;
       }
     });
+
+    const currentPhase = firstIncomplete ?? PHASES[PHASES.length - 1].id;
 
     const msDiff = Date.now() - new Date(state.customerProfile.kickoffDate).getTime();
     const daysSinceKickoff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
