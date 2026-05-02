@@ -68,10 +68,13 @@ paths:
       parameters:
         - in: query
           name: months
-          required: true
+          required: false
+          description: Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.
           schema:
             type: integer
             enum: [3, 6, 12]
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
         - $ref: "#/components/parameters/ProvidersParam"
         - $ref: "#/components/parameters/TeamsParam"
         - $ref: "#/components/parameters/ProductsParam"

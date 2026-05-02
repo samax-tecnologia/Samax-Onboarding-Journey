@@ -1,5 +1,12 @@
+import { useMemo, useState } from "react";
 import { useGetFocusFilters } from "@workspace/api-client-react";
-import { useFilters, useSyncAnchor, type CostType } from "@/lib/filters-store";
+import {
+  useFilters,
+  useSyncAnchor,
+  type CostType,
+  type DateRange,
+  type PresetMonths,
+} from "@/lib/filters-store";
 import { humanize } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +29,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarRange, ChevronDown, RotateCcw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { DateRange as RDPDateRange } from "react-day-picker";
 
 type MultiProps = {
   label: string;
@@ -92,6 +101,116 @@ function MultiSelect({ label, options, value, onChange, formatLabel }: MultiProp
   );
 }
 
+function toIsoDate(d: Date): string {
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    .toISOString()
+    .slice(0, 10);
+}
+
+function fromIsoDate(iso: string): Date | undefined {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function formatHumanDate(iso: string): string {
+  const dt = fromIsoDate(iso);
+  if (!dt) return iso;
+  return dt.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+type CustomRangePickerProps = {
+  range: DateRange;
+  onApply: (next: DateRange) => void;
+};
+
+function CustomRangePicker({ range, onApply }: CustomRangePickerProps) {
+  const [open, setOpen] = useState(false);
+  const initialSelected: RDPDateRange | undefined = useMemo(() => {
+    if (range.mode !== "custom") return undefined;
+    return {
+      from: fromIsoDate(range.startDate),
+      to: fromIsoDate(range.endDate),
+    };
+  }, [range]);
+  const [selected, setSelected] = useState<RDPDateRange | undefined>(
+    initialSelected,
+  );
+
+  const isActive = range.mode === "custom";
+  const summary =
+    range.mode === "custom"
+      ? `${formatHumanDate(range.startDate)} → ${formatHumanDate(range.endDate)}`
+      : "Personalizado";
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setSelected(initialSelected);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          variant={isActive ? "default" : "outline"}
+          size="sm"
+          className="h-9 gap-2"
+        >
+          <CalendarRange className="w-3.5 h-3.5" />
+          <span className="text-sm font-medium truncate">{summary}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-3">
+        <Calendar
+          mode="range"
+          numberOfMonths={2}
+          selected={selected}
+          onSelect={setSelected}
+          captionLayout="dropdown"
+        />
+        <div className="flex items-center justify-between gap-2 pt-3 border-t mt-2">
+          <span className="text-xs text-muted-foreground">
+            {selected?.from && selected?.to
+              ? `${formatHumanDate(toIsoDate(selected.from))} → ${formatHumanDate(toIsoDate(selected.to))}`
+              : "Escolha início e fim"}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelected(undefined);
+              }}
+            >
+              Limpar
+            </Button>
+            <Button
+              size="sm"
+              disabled={!selected?.from || !selected?.to}
+              onClick={() => {
+                if (!selected?.from || !selected?.to) return;
+                onApply({
+                  mode: "custom",
+                  startDate: toIsoDate(selected.from),
+                  endDate: toIsoDate(selected.to),
+                });
+                setOpen(false);
+              }}
+            >
+              Aplicar
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function FilterBar() {
   const { data, isLoading } = useGetFocusFilters();
   useSyncAnchor(data?.periodEnd);
@@ -112,13 +231,15 @@ export function FilterBar() {
   const activeCount =
     filters.providers.length + filters.teams.length + filters.products.length;
 
+  const presetValue = filters.range.mode === "preset" ? String(filters.range.months) : "";
+
   return (
     <div className="flex items-center gap-2 flex-wrap px-8 py-4 border-b bg-background/80 backdrop-blur sticky top-0 z-10">
-      <div className="flex items-center gap-1 mr-2">
+      <div className="flex items-center gap-2 mr-2">
         <Tabs
-          value={String(filters.range.months)}
+          value={presetValue}
           onValueChange={(v) =>
-            setRange({ ...filters.range, months: Number(v) as 3 | 6 | 12 })
+            setRange({ mode: "preset", months: Number(v) as PresetMonths })
           }
         >
           <TabsList className="h-9">
@@ -133,6 +254,7 @@ export function FilterBar() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        <CustomRangePicker range={filters.range} onApply={setRange} />
       </div>
 
       <MultiSelect

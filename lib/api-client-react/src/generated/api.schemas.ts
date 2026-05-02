@@ -169,7 +169,18 @@ export type GetFocusSummaryParams = {
 };
 
 export type GetFocusTimeSeriesParams = {
-  months: GetFocusTimeSeriesMonths;
+  /**
+   * Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.
+   */
+  months?: GetFocusTimeSeriesMonths;
+  /**
+   * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+   */
+  startDate?: StartDateParamParameter;
+  /**
+   * Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+   */
+  endDate?: EndDateParamParameter;
   /**
    * Comma-separated list of FOCUS ProviderName values
    */

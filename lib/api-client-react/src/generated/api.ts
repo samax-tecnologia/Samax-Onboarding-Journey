@@ -283,7 +283,7 @@ export function useGetFocusSummary<
 /**
  * @summary Past costs trend, broken down by provider
  */
-export const getGetFocusTimeSeriesUrl = (params: GetFocusTimeSeriesParams) => {
+export const getGetFocusTimeSeriesUrl = (params?: GetFocusTimeSeriesParams) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -300,7 +300,7 @@ export const getGetFocusTimeSeriesUrl = (params: GetFocusTimeSeriesParams) => {
 };
 
 export const getFocusTimeSeries = async (
-  params: GetFocusTimeSeriesParams,
+  params?: GetFocusTimeSeriesParams,
   options?: RequestInit,
 ): Promise<FocusTimeSeries> => {
   return customFetch<FocusTimeSeries>(getGetFocusTimeSeriesUrl(params), {
@@ -319,7 +319,7 @@ export const getGetFocusTimeSeriesQueryOptions = <
   TData = Awaited<ReturnType<typeof getFocusTimeSeries>>,
   TError = ErrorType<unknown>,
 >(
-  params: GetFocusTimeSeriesParams,
+  params?: GetFocusTimeSeriesParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getFocusTimeSeries>>,
@@ -358,7 +358,7 @@ export function useGetFocusTimeSeries<
   TData = Awaited<ReturnType<typeof getFocusTimeSeries>>,
   TError = ErrorType<unknown>,
 >(
-  params: GetFocusTimeSeriesParams,
+  params?: GetFocusTimeSeriesParams,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getFocusTimeSeries>>,

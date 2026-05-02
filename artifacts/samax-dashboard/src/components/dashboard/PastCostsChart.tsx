@@ -25,16 +25,26 @@ const PROVIDER_COLORS: Record<string, string> = {
 export function PastCostsChart() {
   const { filters, anchorEnd } = useFilters();
   const common = toCommonParams(filters, anchorEnd);
-  // Note: /focus/timeseries derives its window from the `months` preset
-  // (per the OpenAPI contract). startDate/endDate from `common` are used
-  // by the other widgets to keep them in lockstep with the same window.
-  const params = {
-    months: filters.range.months,
-    providers: common.providers,
-    teams: common.teams,
-    products: common.products,
-    costType: common.costType,
-  };
+  // /focus/timeseries accepts either the `months` preset OR a custom
+  // startDate/endDate range. We send only the relevant ones so the server
+  // can pick the right window.
+  const params =
+    filters.range.mode === "preset"
+      ? {
+          months: filters.range.months,
+          providers: common.providers,
+          teams: common.teams,
+          products: common.products,
+          costType: common.costType,
+        }
+      : {
+          startDate: common.startDate,
+          endDate: common.endDate,
+          providers: common.providers,
+          teams: common.teams,
+          products: common.products,
+          costType: common.costType,
+        };
   const { data, isLoading, isError } = useGetFocusTimeSeries(params);
 
   if (isLoading) {
@@ -81,7 +91,10 @@ export function PastCostsChart() {
             Custos históricos
           </div>
           <div className="text-sm text-muted-foreground mt-1">
-            Últimos {filters.range.months} meses · {data.costType}
+            {filters.range.mode === "preset"
+              ? `Últimos ${filters.range.months} meses`
+              : `${filters.range.startDate} → ${filters.range.endDate}`}{" "}
+            · {data.costType}
           </div>
         </div>
 

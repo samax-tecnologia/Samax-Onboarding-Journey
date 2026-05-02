@@ -99,7 +99,20 @@ export const GetFocusSummaryResponse = zod.object({
 export const getFocusTimeSeriesQueryCostTypeDefault = `EffectiveCost`;
 
 export const GetFocusTimeSeriesQueryParams = zod.object({
-  months: zod.union([zod.literal(3), zod.literal(6), zod.literal(12)]),
+  months: zod
+    .union([zod.literal(3), zod.literal(6), zod.literal(12)])
+    .optional()
+    .describe(
+      "Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.",
+    ),
+  startDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart"),
+  endDate: zod.coerce
+    .string()
+    .optional()
+    .describe("Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd"),
   providers: zod.coerce
     .string()
     .optional()

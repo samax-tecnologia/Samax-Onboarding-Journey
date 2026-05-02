@@ -10,10 +10,21 @@ import {
 
 export type CostType = "BilledCost" | "EffectiveCost";
 
-export type DateRange = {
-  /** Convenience preset; drives /focus/timeseries `months` and the derived window. */
-  months: 3 | 6 | 12;
-};
+export type PresetMonths = 3 | 6 | 12;
+
+export type DateRange =
+  | {
+      mode: "preset";
+      /** Convenience preset; drives /focus/timeseries `months` and the derived window. */
+      months: PresetMonths;
+    }
+  | {
+      mode: "custom";
+      /** ISO date (YYYY-MM-DD), inclusive. */
+      startDate: string;
+      /** ISO date (YYYY-MM-DD), exclusive. */
+      endDate: string;
+    };
 
 export type DashboardFilters = {
   range: DateRange;
@@ -37,7 +48,7 @@ type Ctx = {
 };
 
 const DEFAULT: DashboardFilters = {
-  range: { months: 6 },
+  range: { mode: "preset", months: 6 },
   providers: [],
   teams: [],
   products: [],
@@ -93,8 +104,8 @@ export function useSyncAnchor(anchorEnd: string | undefined) {
  * Derive ISO start/end dates from the months preset + anchor, so every
  * widget consumes the exact same time window.
  */
-export function deriveWindow(
-  months: 3 | 6 | 12,
+export function derivePresetWindow(
+  months: PresetMonths,
   anchorEnd: string | undefined,
 ): { startDate?: string; endDate?: string } {
   if (!anchorEnd) return {};
@@ -108,12 +119,23 @@ export function deriveWindow(
   };
 }
 
+/** Resolve the active window (preset or custom) to ISO start/end strings. */
+export function deriveWindow(
+  range: DateRange,
+  anchorEnd: string | undefined,
+): { startDate?: string; endDate?: string } {
+  if (range.mode === "custom") {
+    return { startDate: range.startDate, endDate: range.endDate };
+  }
+  return derivePresetWindow(range.months, anchorEnd);
+}
+
 /** Build the params object that the generated React Query hooks expect for filter-aware endpoints. */
 export function toCommonParams(
   f: DashboardFilters,
   anchorEnd?: string,
 ) {
-  const { startDate, endDate } = deriveWindow(f.range.months, anchorEnd);
+  const { startDate, endDate } = deriveWindow(f.range, anchorEnd);
   return {
     providers: f.providers.length ? f.providers.join(",") : undefined,
     teams: f.teams.length ? f.teams.join(",") : undefined,

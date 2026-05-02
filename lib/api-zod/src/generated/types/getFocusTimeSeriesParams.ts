@@ -6,13 +6,26 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CostTypeParamParameter } from "./costTypeParamParameter";
+import type { EndDateParamParameter } from "./endDateParamParameter";
 import type { GetFocusTimeSeriesMonths } from "./getFocusTimeSeriesMonths";
 import type { ProductsParamParameter } from "./productsParamParameter";
 import type { ProvidersParamParameter } from "./providersParamParameter";
+import type { StartDateParamParameter } from "./startDateParamParameter";
 import type { TeamsParamParameter } from "./teamsParamParameter";
 
 export type GetFocusTimeSeriesParams = {
-  months: GetFocusTimeSeriesMonths;
+  /**
+   * Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.
+   */
+  months?: GetFocusTimeSeriesMonths;
+  /**
+   * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
+   */
+  startDate?: StartDateParamParameter;
+  /**
+   * Exclusive ISO date (YYYY-MM-DD) for ChargePeriodEnd
+   */
+  endDate?: EndDateParamParameter;
   /**
    * Comma-separated list of FOCUS ProviderName values
    */

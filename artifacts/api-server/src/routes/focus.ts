@@ -157,18 +157,37 @@ router.get("/focus/summary", (req, res) => {
 });
 
 router.get("/focus/timeseries", (req, res) => {
-  const coercedQuery = { ...req.query, months: Number((req.query as Record<string, unknown>)["months"]) };
+  const rawMonths = (req.query as Record<string, unknown>)["months"];
+  const coercedQuery = {
+    ...req.query,
+    ...(rawMonths !== undefined && rawMonths !== ""
+      ? { months: Number(rawMonths) }
+      : {}),
+  };
   const parsed = GetFocusTimeSeriesQueryParams.safeParse(coercedQuery);
   if (!parsed.success) {
     req.log.warn({ issues: parsed.error.issues }, "Invalid focus/timeseries query");
     res.status(400).json({ error: "invalid_query" });
     return;
   }
-  const months = Number(parsed.data.months);
   const ds = getDataset();
-  const end = ds.endDate;
-  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months, 1));
-  const filters = buildFiltersFromQuery(parsed.data, { start, end });
+  const customStart = parseDate(parsed.data.startDate);
+  const customEnd = parseDate(parsed.data.endDate);
+  const hasCustomRange = !!(customStart && customEnd);
+  const months = parsed.data.months ? Number(parsed.data.months) : 6;
+  const fallbackEnd = ds.endDate;
+  const fallbackStart = new Date(
+    Date.UTC(fallbackEnd.getUTCFullYear(), fallbackEnd.getUTCMonth() - months, 1),
+  );
+  const filters = buildFiltersFromQuery(parsed.data, {
+    start: fallbackStart,
+    end: fallbackEnd,
+  });
+  const start = hasCustomRange ? customStart! : fallbackStart;
+  const end = hasCustomRange ? customEnd! : fallbackEnd;
+  // Make sure the loop bounds match the resolved window
+  filters.startDate = start;
+  filters.endDate = end;
 
   const inRange = applyFilters(ds.monthlyRows, filters);
 
@@ -206,7 +225,14 @@ router.get("/focus/timeseries", (req, res) => {
   const totalRange = points.reduce((a, p) => a + p.total, 0);
 
   // Previous range of same length for comparison
-  const prevStart = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - months, 1));
+  const windowMonths = Math.max(
+    1,
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+      (end.getUTCMonth() - start.getUTCMonth()),
+  );
+  const prevStart = new Date(
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - windowMonths, 1),
+  );
   const prevRows = applyFilters(ds.monthlyRows, {
     ...filters,
     startDate: prevStart,
