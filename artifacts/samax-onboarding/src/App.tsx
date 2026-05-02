@@ -8,6 +8,7 @@ import CustomerPage from "@/pages/customer";
 import InternalPage from "@/pages/internal";
 import PlaceholderPage from "@/pages/placeholder";
 import { JourneyProvider } from "@/lib/journey-store";
+import { NotificationToaster } from "@/components/notifications/NotificationToaster";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ function App() {
             <AppLayout>
               <Router />
             </AppLayout>
+            <NotificationToaster />
           </WouterRouter>
         </JourneyProvider>
         <Toaster />

@@ -374,7 +374,7 @@ function PhaseCard({
                         <Label className="text-xs text-muted-foreground">Status</Label>
                         <Select
                           value={status}
-                          onValueChange={(v) => actions.setPhaseStatus(phase.id, v as PhaseStatus)}
+                          onValueChange={(v) => actions.setPhaseStatus(phase.id, v as PhaseStatus, true)}
                         >
                           <SelectTrigger className="h-8 mt-1 text-sm">
                             <SelectValue />
@@ -402,6 +402,7 @@ function PhaseCard({
                       <Textarea
                         value={state.phaseBlockers[phase.id] ?? ""}
                         onChange={(e) => actions.setPhaseBlocker(phase.id, e.target.value)}
+                        onBlur={(e) => actions.setPhaseBlocker(phase.id, e.target.value, true)}
                         placeholder="Algo travando o avanço dessa fase?"
                         className="mt-1 text-sm min-h-[50px]"
                       />

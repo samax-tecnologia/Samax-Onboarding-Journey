@@ -1,6 +1,8 @@
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation, Link } from "wouter";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { EmailDigestPreview } from "@/components/notifications/EmailDigestPreview";
 
 export function Header() {
   const [location] = useLocation();
@@ -27,10 +29,10 @@ export function Header() {
           <span className="text-foreground font-medium">Onboarding</span>
         )}
       </div>
-      
-      <div className="flex items-center gap-4">
+
+      <div className="flex items-center gap-2">
         {(isCustomer || isInternal) && (
-          <div className="flex bg-muted rounded-md p-1">
+          <div className="flex bg-muted rounded-md p-1 mr-2">
             <Link href="/">
               <div className={`px-3 py-1 text-sm rounded-sm cursor-pointer transition-colors ${isCustomer ? 'bg-primary text-primary-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
                 Cliente
@@ -43,6 +45,8 @@ export function Header() {
             </Link>
           </div>
         )}
+        {isCustomer && <EmailDigestPreview />}
+        <NotificationBell />
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
           <Globe className="w-4 h-4" />
         </Button>
