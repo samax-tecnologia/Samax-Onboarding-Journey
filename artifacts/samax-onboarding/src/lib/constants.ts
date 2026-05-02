@@ -1,3 +1,85 @@
+export const CUSTOMER_PROFILE = { 
+  name: "Luana", 
+  company: "Acme Cloud", 
+  contractAnnual: 60000, 
+  spendAnnual: 1500000, 
+  kickoffDate: "2026-04-15", 
+  consultant: { name: "Rafael Mendes", role: "Senior FinOps Consultant", photoInitials: "RM", nextMeeting: "2026-05-08T15:00" }, 
+  environment: { connectedSince: "2026-04-29", resourcesMonitored: 1847, monthlySpend: 94320, providers: ["AWS"] } 
+};
+
+export const CUSTOMER_STAGES = [
+  { 
+    id: "conectar", 
+    number: 1, 
+    title: "Conectar", 
+    summary: "Você nos dá acesso e validamos a leitura do seu ambiente", 
+    ownership: "voce", 
+    mapsToPhases: ["3", "4"], 
+    customerSteps: [
+      { id: "step-1-1", label: "Realizar reunião de kickoff técnico", ownership: "ambos", linkedTaskIds: ["3.1"] },
+      { id: "step-1-2", label: "Fornecer acessos de leitura ao billing e inventário", ownership: "voce", linkedTaskIds: ["3.3", "4.1", "4.4"] },
+      { id: "step-1-3", label: "Validar lista de contas/projetos no escopo", ownership: "ambos", linkedTaskIds: ["3.2", "4.2"] },
+      { id: "step-1-4", label: "Acordar governança de reuniões e baseline temporal", ownership: "ambos", linkedTaskIds: ["3.4", "3.5"] }
+    ] 
+  },
+  { 
+    id: "descobrir", 
+    number: 2, 
+    title: "Descobrir", 
+    summary: "Samax lê seu ambiente e identifica onde está o dinheiro", 
+    ownership: "samax", 
+    mapsToPhases: ["5", "6"], 
+    customerSteps: [
+      { id: "step-2-1", label: "Ingerir e processar dados históricos", ownership: "samax", linkedTaskIds: ["4.3"] },
+      { id: "step-2-2", label: "Analisar top drivers de custo e baseline", ownership: "samax", linkedTaskIds: ["5.1", "5.2", "5.3"] },
+      { id: "step-2-3", label: "Validar baseline e distribuição de gastos", ownership: "voce", linkedTaskIds: ["5.4"] },
+      { id: "step-2-4", label: "Mapear backlog de oportunidades de quick win", ownership: "samax", linkedTaskIds: ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6"] }
+    ] 
+  },
+  { 
+    id: "decidir", 
+    number: 3, 
+    title: "Decidir", 
+    summary: "Você revisa e aprova as ações que vão gerar economia", 
+    ownership: "voce", 
+    mapsToPhases: ["7"], 
+    customerSteps: [
+      { id: "step-3-1", label: "Estimar impacto financeiro das oportunidades", ownership: "samax", linkedTaskIds: ["7.1", "7.2"] },
+      { id: "step-3-2", label: "Definir equipe responsável por cada ação", ownership: "ambos", linkedTaskIds: ["7.3"] },
+      { id: "step-3-3", label: "Agendar janelas de execução seguras", ownership: "ambos", linkedTaskIds: ["7.4"] },
+      { id: "step-3-4", label: "Aprovar formalmente as recomendações", ownership: "voce", linkedTaskIds: ["7.5"] }
+    ] 
+  },
+  { 
+    id: "capturar", 
+    number: 4, 
+    title: "Capturar valor", 
+    summary: "Executamos juntos e comprovamos o valor anualizado", 
+    ownership: "ambos", 
+    mapsToPhases: ["8", "9"], 
+    customerSteps: [
+      { id: "step-4-1", label: "Executar as ações aprovadas", ownership: "ambos", linkedTaskIds: ["8.1"] },
+      { id: "step-4-2", label: "Medir e registrar economia realizada na fatura", ownership: "samax", linkedTaskIds: ["8.2", "8.3", "8.4", "8.5"] },
+      { id: "step-4-3", label: "Comprovar alcance da meta mínima de valor", ownership: "samax", linkedTaskIds: ["8.6"] },
+      { id: "step-4-4", label: "Definir rotina FinOps e próximos passos", ownership: "ambos", linkedTaskIds: ["9.1", "9.2", "9.3", "9.4", "9.5"] }
+    ] 
+  }
+];
+
+export const OPPORTUNITIES = [
+  { id: "opp-1", title: "Desligar ambiente dev fora do horário", category: "Ambientes não produtivos", monthly: 6000, annual: 72000, risk: "Baixo", action: "Aplicar schedule 20h-7h e fins de semana" },
+  { id: "opp-2", title: "Reduzir retenção de logs de 365 para 90 dias", category: "Logs", monthly: 4000, annual: 48000, risk: "Baixo", action: "Validar compliance e alterar retenção" },
+  { id: "opp-3", title: "Remover 12 volumes EBS órfãos", category: "Recursos ociosos", monthly: 2500, annual: 30000, risk: "Baixo", action: "Snapshot final e remoção" },
+  { id: "opp-4", title: "Lifecycle em bucket de dados antigos", category: "Storage", monthly: 3000, annual: 36000, risk: "Médio", action: "Mover objetos antigos para classe mais barata" }
+];
+
+export const PRE_CONTRACT_MILESTONES = [
+  { id: "diagnostico", label: "Diagnóstico realizado", date: "2026-03-10", icon: "search" },
+  { id: "contrato", label: "Contrato assinado", date: "2026-04-01", icon: "file-check" },
+  { id: "meta", label: "Meta de valor definida", date: "2026-04-15", icon: "target" }
+];
+
 export const PHASES = [
   {
     id: "1.1",

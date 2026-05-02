@@ -4,15 +4,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/AppLayout";
-import OnboardingPage from "@/pages/onboarding";
+import CustomerPage from "@/pages/customer";
+import InternalPage from "@/pages/internal";
 import PlaceholderPage from "@/pages/placeholder";
+import { JourneyProvider } from "@/lib/journey-store";
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={OnboardingPage} />
+      <Route path="/" component={CustomerPage} />
+      <Route path="/jornada-samax" component={InternalPage} />
       <Route path="/inicio">
         <PlaceholderPage title="Início" description="Seu dashboard principal está sendo preparado." />
       </Route>
@@ -43,11 +46,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AppLayout>
-            <Router />
-          </AppLayout>
-        </WouterRouter>
+        <JourneyProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppLayout>
+              <Router />
+            </AppLayout>
+          </WouterRouter>
+        </JourneyProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
