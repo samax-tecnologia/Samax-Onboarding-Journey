@@ -3,24 +3,37 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { AppLayout } from "@/components/layout/AppLayout";
+import OnboardingPage from "@/pages/onboarding";
+import PlaceholderPage from "@/pages/placeholder";
 
 const queryClient = new QueryClient();
-
-function Home() {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
-      </div>
-    </div>
-  );
-}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={OnboardingPage} />
+      <Route path="/inicio">
+        <PlaceholderPage title="Início" description="Seu dashboard principal está sendo preparado." />
+      </Route>
+      <Route path="/financeiro">
+        <PlaceholderPage title="Financeiro" description="Visão geral de faturas, budgets e compromissos financeiros." />
+      </Route>
+      <Route path="/otimizacao">
+        <PlaceholderPage title="Otimização" description="Recomendações e quick wins de redução de custo." />
+      </Route>
+      <Route path="/recursos">
+        <PlaceholderPage title="Recursos" description="Inventário detalhado da sua infraestrutura em cloud." />
+      </Route>
+      <Route path="/tags">
+        <PlaceholderPage title="Tags" description="Gestão de tags, showback e chargeback." />
+      </Route>
+      <Route path="/usuarios">
+        <PlaceholderPage title="Usuários" description="Gerencie o acesso da sua equipe à Samax." />
+      </Route>
+      <Route path="/configuracoes">
+        <PlaceholderPage title="Configurações" description="Configurações da conta, integrações e faturamento." />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -31,7 +44,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AppLayout>
+            <Router />
+          </AppLayout>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
