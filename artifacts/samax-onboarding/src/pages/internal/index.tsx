@@ -69,8 +69,10 @@ function PageHeader() {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-2 mb-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Jornada Samax</h1>
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          Jornada Samax <span className="text-muted-foreground font-normal">·</span> <span className="text-foreground">{state.customerProfile.company}</span>
+        </h1>
         <Badge variant="outline" className="text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 gap-1">
           <Eye className="w-3 h-3" /> Visão interna · não exposta ao cliente
         </Badge>
