@@ -4,7 +4,9 @@ import { formatCurrency, formatPercent, formatPeriod } from "@/lib/format";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp, Minus, TrendingDown } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, TrendingDown, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCsv, toCsv, todayStamp } from "@/lib/export";
 import {
   Bar,
   BarChart,
@@ -99,6 +101,36 @@ export function PastCostsChart() {
         </div>
 
         <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5"
+            disabled={data.points.length === 0}
+            onClick={() => {
+              const providerKeys = Object.keys(data.points[0]?.byProvider ?? {});
+              const headers = [
+                "period",
+                "total",
+                "currency",
+                "costType",
+                ...providerKeys,
+              ];
+              const rows = data.points.map((p) => [
+                p.period,
+                p.total,
+                data.currency,
+                data.costType,
+                ...providerKeys.map((k) => p.byProvider[k] ?? 0),
+              ]);
+              downloadCsv(
+                `samax-timeseries-${todayStamp()}.csv`,
+                toCsv(headers, rows),
+              );
+            }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </Button>
           <div className="text-right">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Total no período

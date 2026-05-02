@@ -7,6 +7,7 @@ import { PastCostsChart } from "@/components/dashboard/PastCostsChart";
 import { FocusBreakdownCard } from "@/components/dashboard/FocusBreakdownCard";
 import { DimensionListCard } from "@/components/dashboard/DimensionListCard";
 import { SavingsTable } from "@/components/dashboard/SavingsTable";
+import { PrintHeader } from "@/components/dashboard/PrintHeader";
 
 export default function DashboardPage() {
   const savingsRef = useRef<HTMLDivElement>(null);
@@ -14,8 +15,9 @@ export default function DashboardPage() {
   return (
     <div>
       <FilterBar />
-      <div className="px-8 py-6 space-y-6">
-        <div>
+      <div className="px-8 py-6 space-y-6 print:px-4 print:py-2 print:space-y-3">
+        <PrintHeader />
+        <div className="print:hidden">
           <h1 className="text-2xl font-semibold tracking-tight">FinOps Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Visão multi-cloud do seu gasto, organizada pelo padrão FOCUS.
@@ -61,7 +63,7 @@ export default function DashboardPage() {
           <SavingsTable />
         </div>
 
-        <div className="text-center text-xs text-muted-foreground pt-4 pb-2">
+        <div className="text-center text-xs text-muted-foreground pt-4 pb-2 print:hidden">
           Dados ilustrativos gerados a partir de uma amostra FOCUS-formatted ·
           Substituição por exports reais (AWS CUR 2.0, Azure Cost Management, GCP Billing)
           em uma próxima entrega.

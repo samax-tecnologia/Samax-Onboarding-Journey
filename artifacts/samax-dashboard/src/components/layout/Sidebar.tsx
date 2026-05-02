@@ -84,7 +84,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-sidebar flex flex-col h-full flex-shrink-0 border-r border-sidebar-border">
+    <aside className="w-64 bg-sidebar flex flex-col h-full flex-shrink-0 border-r border-sidebar-border print:hidden">
       <div className="p-6 flex items-center gap-2">
         <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold">
           S

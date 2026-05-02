@@ -234,7 +234,7 @@ export function FilterBar() {
   const presetValue = filters.range.mode === "preset" ? String(filters.range.months) : "";
 
   return (
-    <div className="flex items-center gap-2 flex-wrap px-8 py-4 border-b bg-background/80 backdrop-blur sticky top-0 z-10">
+    <div className="flex items-center gap-2 flex-wrap px-8 py-4 border-b bg-background/80 backdrop-blur sticky top-0 z-10 print:hidden">
       <div className="flex items-center gap-2 mr-2">
         <Tabs
           value={presetValue}

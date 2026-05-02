@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronRight, Layers } from "lucide-react";
+import { ArrowLeft, ChevronRight, Layers, Download } from "lucide-react";
+import { downloadCsv, toCsv, todayStamp } from "@/lib/export";
 
 type Dimension = "serviceCategory" | "chargeCategory";
 
@@ -65,18 +66,46 @@ export function FocusBreakdownCard() {
             )}
           </div>
         </div>
-        {!isDrilled && (
-          <Tabs value={dimension} onValueChange={(v) => setDimension(v as Dimension)}>
-            <TabsList className="h-8">
-              <TabsTrigger value="serviceCategory" className="text-xs px-3">
-                Service
-              </TabsTrigger>
-              <TabsTrigger value="chargeCategory" className="text-xs px-3">
-                Charge
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
+        <div className="flex items-center gap-2">
+          {!isDrilled && (
+            <Tabs value={dimension} onValueChange={(v) => setDimension(v as Dimension)}>
+              <TabsList className="h-8">
+                <TabsTrigger value="serviceCategory" className="text-xs px-3">
+                  Service
+                </TabsTrigger>
+                <TabsTrigger value="chargeCategory" className="text-xs px-3">
+                  Charge
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            disabled={!data || data.items.length === 0}
+            onClick={() => {
+              if (!data) return;
+              const headers = ["dimension", "key", "label", "amount", "currency", "percent"];
+              const rows = data.items.map((it) => [
+                effectiveDimension,
+                it.key,
+                it.label,
+                it.amount,
+                data.currency,
+                it.percent,
+              ]);
+              const scope = isDrilled ? `${drillParent}` : effectiveDimension;
+              downloadCsv(
+                `samax-breakdown-${scope}-${todayStamp()}.csv`,
+                toCsv(headers, rows),
+              );
+            }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

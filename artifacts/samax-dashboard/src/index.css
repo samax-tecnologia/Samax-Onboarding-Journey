@@ -336,3 +336,39 @@
     inset: -1px;
   }
 }
+@media print {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Allow the app shell (flex h-screen overflow-hidden) to expand for printing */
+  .flex.h-screen.overflow-hidden {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+  /* Avoid splitting cards across pages when possible */
+  .rounded-md, .rounded-lg, .rounded-xl, [class*="card"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Force grids to stack so charts/cards keep their full width */
+  .grid {
+    display: block !important;
+  }
+  .grid > * + * {
+    margin-top: 1rem;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}

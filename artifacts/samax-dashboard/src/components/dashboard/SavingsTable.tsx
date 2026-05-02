@@ -29,8 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, Sparkles, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, Sparkles, ArrowUpDown, Download } from "lucide-react";
 import { categoryStyle, effortLabel } from "./savings-style";
+import { downloadCsv, toCsv, todayStamp } from "@/lib/export";
 
 type SortKey = "monthlySavings" | "category" | "effort" | "provider";
 type Saving = SavingOpportunity;
@@ -108,19 +109,67 @@ export function SavingsTable() {
           </div>
         </div>
 
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-9 w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as categorias</SelectItem>
-            <SelectItem value="idle">Recurso ocioso</SelectItem>
-            <SelectItem value="rightsizing">Rightsizing</SelectItem>
-            <SelectItem value="commitment">Commitment</SelectItem>
-            <SelectItem value="untagged">Untagged</SelectItem>
-            <SelectItem value="storage-tier">Storage tier</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5"
+            disabled={!data || filtered.length === 0}
+            onClick={() => {
+              if (!data) return;
+              const headers = [
+                "id",
+                "title",
+                "category",
+                "provider",
+                "service",
+                "resourceId",
+                "team",
+                "product",
+                "effort",
+                "monthlySavings",
+                "currency",
+                "recommendedAction",
+                "details",
+              ];
+              const rows = filtered.map((r) => [
+                r.id,
+                r.title,
+                r.category,
+                r.provider,
+                r.service,
+                r.resourceId ?? "",
+                humanize(r.team),
+                humanize(r.product),
+                r.effort,
+                r.monthlySavings,
+                r.currency ?? "USD",
+                r.recommendedAction,
+                r.details ?? "",
+              ]);
+              downloadCsv(
+                `samax-oportunidades-${todayStamp()}.csv`,
+                toCsv(headers, rows),
+              );
+            }}
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar CSV
+          </Button>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-9 w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              <SelectItem value="idle">Recurso ocioso</SelectItem>
+              <SelectItem value="rightsizing">Rightsizing</SelectItem>
+              <SelectItem value="commitment">Commitment</SelectItem>
+              <SelectItem value="untagged">Untagged</SelectItem>
+              <SelectItem value="storage-tier">Storage tier</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
