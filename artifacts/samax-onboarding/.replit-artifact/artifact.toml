@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Samax Onboarding"
+version = "1.0.0"
+id = "artifacts/samax-onboarding"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18835
+
+[services.development]
+run = "pnpm --filter @workspace/samax-onboarding run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/samax-onboarding", "run", "build" ]
+publicDir = "artifacts/samax-onboarding/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18835"
+BASE_PATH = "/"
