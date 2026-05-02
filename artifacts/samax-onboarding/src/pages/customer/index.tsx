@@ -13,11 +13,11 @@ import {
   Server,
   Cloud,
   CircleDot,
-  Info,
   CheckCircle2,
   XCircle,
   Clock,
   HelpCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -488,7 +488,7 @@ function StagesJourney() {
 function OpportunitiesTable() {
   const { state, actions } = useJourney();
 
-  const decisionMeta: Record<string, { label: string; className: string; icon: any }> = {
+  const decisionMeta: Record<string, { label: string; className: string; icon: LucideIcon }> = {
     approved: { label: "Aprovada", className: "bg-primary/15 text-primary border-primary/30", icon: CheckCircle2 },
     rejected: { label: "Rejeitada", className: "bg-destructive/10 text-destructive border-destructive/30", icon: XCircle },
     deferred: { label: "Adiada", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30", icon: Clock },

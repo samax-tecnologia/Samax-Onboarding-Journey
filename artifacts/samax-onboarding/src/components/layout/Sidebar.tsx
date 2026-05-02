@@ -8,12 +8,21 @@ import {
   Tag, 
   Users, 
   Settings,
-  ClipboardCheck
+  ClipboardCheck,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-const navItemsTop = [
+type SidebarNavItem = {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  isNew?: boolean;
+  isInternal?: boolean;
+};
+
+const navItemsTop: SidebarNavItem[] = [
   { path: "/", label: "Comece por aqui", icon: PlayCircle, isNew: true },
   { path: "/inicio", label: "Início", icon: Home },
   { path: "/financeiro", label: "Financeiro", icon: Wallet },
@@ -23,7 +32,7 @@ const navItemsTop = [
   { path: "/usuarios", label: "Usuários", icon: Users },
 ];
 
-const navItemsBottom = [
+const navItemsBottom: SidebarNavItem[] = [
   { path: "/jornada-samax", label: "Jornada Samax", icon: ClipboardCheck, isInternal: true },
   { path: "/configuracoes", label: "Configurações", icon: Settings },
 ];
@@ -31,7 +40,7 @@ const navItemsBottom = [
 export function Sidebar() {
   const [location] = useLocation();
 
-  const renderItem = (item: any) => {
+  const renderItem = (item: SidebarNavItem) => {
     const isActive = location === item.path;
     return (
       <Link 
