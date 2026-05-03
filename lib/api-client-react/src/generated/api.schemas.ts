@@ -45,6 +45,17 @@ export interface SavingOpportunity {
   details?: string;
 }
 
+/**
+ * Which backing dataset served this response
+ */
+export type FocusSummaryDataSource =
+  (typeof FocusSummaryDataSource)[keyof typeof FocusSummaryDataSource];
+
+export const FocusSummaryDataSource = {
+  mock: "mock",
+  live: "live",
+} as const;
+
 export interface FocusSummary {
   currency: string;
   periodStart: string;
@@ -59,6 +70,102 @@ export interface FocusSummary {
   savingsTotal: number;
   savingsCount: number;
   topSavings: SavingOpportunity[];
+  /** Which backing dataset served this response */
+  dataSource?: FocusSummaryDataSource;
+  /** ISO date — costs after this date are provisional and may be restated */
+  provisionalUntil?: string;
+  /** True when the tenant has any ingested rows */
+  hasLiveData?: boolean;
+}
+
+export type ConnectionInputProvider =
+  (typeof ConnectionInputProvider)[keyof typeof ConnectionInputProvider];
+
+export const ConnectionInputProvider = {
+  sample: "sample",
+  aws: "aws",
+  azure: "azure",
+  gcp: "gcp",
+} as const;
+
+export type ConnectionInputConfig = { [key: string]: unknown };
+
+/**
+ * Auto-refresh interval. 4h is only valid for Azure connections.
+ */
+export type ConnectionInputRefreshIntervalHours =
+  (typeof ConnectionInputRefreshIntervalHours)[keyof typeof ConnectionInputRefreshIntervalHours];
+
+export const ConnectionInputRefreshIntervalHours = {
+  NUMBER_4: "4",
+  NUMBER_24: "24",
+} as const;
+
+export interface ConnectionInput {
+  provider: ConnectionInputProvider;
+  displayName: string;
+  config?: ConnectionInputConfig;
+  /** Name of the Replit Secret holding sensitive credentials */
+  secretRef?: string;
+  /** Auto-refresh interval. 4h is only valid for Azure connections. */
+  refreshIntervalHours?: ConnectionInputRefreshIntervalHours;
+}
+
+export type ConnectionConfig = { [key: string]: unknown };
+
+export type ConnectionStatus =
+  (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
+
+export const ConnectionStatus = {
+  pending: "pending",
+  ok: "ok",
+  error: "error",
+  syncing: "syncing",
+} as const;
+
+export interface Connection {
+  id: string;
+  tenantId: string;
+  provider: string;
+  displayName: string;
+  config?: ConnectionConfig;
+  secretRef?: string;
+  status: ConnectionStatus;
+  lastError?: string;
+  lastSyncedAt?: string;
+  nextSyncAt?: string;
+  refreshIntervalHours?: string;
+  createdAt: string;
+}
+
+export type ConnectionListDataSource =
+  (typeof ConnectionListDataSource)[keyof typeof ConnectionListDataSource];
+
+export const ConnectionListDataSource = {
+  mock: "mock",
+  live: "live",
+} as const;
+
+export interface ConnectionList {
+  tenantId: string;
+  dataSource: ConnectionListDataSource;
+  hasLiveData: boolean;
+  connections: Connection[];
+}
+
+export type SyncResultStatus =
+  (typeof SyncResultStatus)[keyof typeof SyncResultStatus];
+
+export const SyncResultStatus = {
+  ok: "ok",
+  error: "error",
+} as const;
+
+export interface SyncResult {
+  status: SyncResultStatus;
+  rowsUpserted: number;
+  partitionsRead: number;
+  error?: string;
 }
 
 export type TimeSeriesPointByProvider = { [key: string]: number };

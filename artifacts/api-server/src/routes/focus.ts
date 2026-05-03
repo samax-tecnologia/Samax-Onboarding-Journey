@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getTenant } from "../lib/req-tenant.js";
 import {
   GetFocusFiltersResponse,
   GetFocusSummaryQueryParams,
@@ -14,15 +15,17 @@ import {
   ALL_PROVIDERS,
   applyFilters,
   costOf,
-  defaultPeriod,
-  getDataset,
+  defaultPeriodForDataset,
   getSavings,
+  loadDataset,
   parseDate,
   parseListParam,
+  provisionalUntil,
   sumCost,
   ymKey,
   type CostType,
   type Filters,
+  type LoadedDataset,
 } from "../lib/focus-aggregate";
 import { PRODUCTS, TEAMS, type FocusRow } from "../lib/focus-mock";
 
@@ -53,9 +56,10 @@ function buildFiltersFromQuery(
   };
 }
 
-router.get("/focus/filters", (_req, res) => {
-  const ds = getDataset();
-  const period = defaultPeriod();
+router.get("/focus/filters", async (req, res) => {
+  const { tenantId, tenantDataSource } = getTenant(req);
+  const ds = await loadDataset(tenantId, tenantDataSource);
+  const period = ds.monthlyRows.length > 0 ? defaultPeriodForDataset(ds) : { start: new Date(), end: new Date() };
   const categoriesSet = new Set<string>();
   for (const r of ds.monthlyRows) categoriesSet.add(r.ServiceCategory);
   const data = GetFocusFiltersResponse.parse({
@@ -70,7 +74,7 @@ router.get("/focus/filters", (_req, res) => {
   res.json(data);
 });
 
-router.get("/focus/summary", (req, res) => {
+router.get("/focus/summary", async (req, res) => {
   const parsed = GetFocusSummaryQueryParams.safeParse(req.query);
   if (!parsed.success) {
     req.log.warn({ issues: parsed.error.issues }, "Invalid focus/summary query");
@@ -78,13 +82,17 @@ router.get("/focus/summary", (req, res) => {
     return;
   }
 
-  const period = defaultPeriod();
+  const { tenantId, tenantDataSource } = getTenant(req);
+  const ds = await loadDataset(tenantId, tenantDataSource);
+  if (ds.monthlyRows.length === 0) {
+    res.json(emptySummary(parsed.data.costType, ds.source));
+    return;
+  }
+  const period = defaultPeriodForDataset(ds);
   const filters = buildFiltersFromQuery(parsed.data, {
     start: period.start,
     end: period.end,
   });
-
-  const ds = getDataset();
   const windowStart = filters.startDate ?? period.start;
   const windowEnd = filters.endDate ?? period.end;
   const inRange = applyFilters(ds.monthlyRows, filters);
@@ -152,11 +160,14 @@ router.get("/focus/summary", (req, res) => {
     savingsTotal: round2(savingsTotal),
     savingsCount: savings.length,
     topSavings: topSavings.map(serializeSaving),
+    dataSource: ds.source,
+    provisionalUntil: provisionalUntil(),
+    hasLiveData: ds.source === "live",
   });
   res.json(data);
 });
 
-router.get("/focus/timeseries", (req, res) => {
+router.get("/focus/timeseries", async (req, res) => {
   const rawMonths = (req.query as Record<string, unknown>)["months"];
   const coercedQuery = {
     ...req.query,
@@ -170,7 +181,20 @@ router.get("/focus/timeseries", (req, res) => {
     res.status(400).json({ error: "invalid_query" });
     return;
   }
-  const ds = getDataset();
+  const { tenantId, tenantDataSource } = getTenant(req);
+  const ds = await loadDataset(tenantId, tenantDataSource);
+  if (ds.monthlyRows.length === 0) {
+    res.json(GetFocusTimeSeriesResponse.parse({
+      currency: CURRENCY,
+      costType: parsed.data.costType ?? "EffectiveCost",
+      points: [],
+      momDelta: 0,
+      momDeltaPercent: 0,
+      totalRange: 0,
+      previousRangeTotal: 0,
+    }));
+    return;
+  }
   const customStart = parseDate(parsed.data.startDate);
   const customEnd = parseDate(parsed.data.endDate);
   const hasCustomRange = !!(customStart && customEnd);
@@ -257,7 +281,7 @@ router.get("/focus/timeseries", (req, res) => {
   res.json(data);
 });
 
-router.get("/focus/breakdown", (req, res) => {
+router.get("/focus/breakdown", async (req, res) => {
   const parsed = GetFocusBreakdownQueryParams.safeParse(req.query);
   if (!parsed.success) {
     req.log.warn({ issues: parsed.error.issues }, "Invalid focus/breakdown query");
@@ -268,8 +292,20 @@ router.get("/focus/breakdown", (req, res) => {
   const parent = parsed.data.parent;
   const limit = parsed.data.limit ?? 12;
 
-  const ds = getDataset();
-  const period = defaultPeriod();
+  const { tenantId, tenantDataSource } = getTenant(req);
+  const ds = await loadDataset(tenantId, tenantDataSource);
+  if (ds.monthlyRows.length === 0) {
+    res.json(GetFocusBreakdownResponse.parse({
+      dimension,
+      parent,
+      currency: CURRENCY,
+      costType: parsed.data.costType ?? "EffectiveCost",
+      totalAmount: 0,
+      items: [],
+    }));
+    return;
+  }
+  const period = defaultPeriodForDataset(ds);
   // For breakdowns we default to the trailing 3 months for a stable picture
   const trailingStart = new Date(
     Date.UTC(period.end.getUTCFullYear(), period.end.getUTCMonth() - 3, 1),
@@ -406,6 +442,27 @@ function humanizeKey(dimension: string, key: string): string {
       .join(" ");
   }
   return key;
+}
+
+function emptySummary(costType: string | undefined, source: "mock" | "live") {
+  const today = new Date().toISOString().slice(0, 10);
+  return GetFocusSummaryResponse.parse({
+    currency: CURRENCY,
+    periodStart: today,
+    periodEnd: today,
+    costType: costType === "BilledCost" ? "BilledCost" : "EffectiveCost",
+    actualSpend: 0,
+    forecastSpend: 0,
+    budget: 0,
+    percentConsumed: 0,
+    projectedDelta: 0,
+    savingsTotal: 0,
+    savingsCount: 0,
+    topSavings: [],
+    dataSource: source,
+    provisionalUntil: provisionalUntil(),
+    hasLiveData: false,
+  });
 }
 
 function round2(n: number): number {

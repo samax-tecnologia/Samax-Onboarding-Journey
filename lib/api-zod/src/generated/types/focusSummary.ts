@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { FocusSummaryDataSource } from "./focusSummaryDataSource";
 import type { SavingOpportunity } from "./savingOpportunity";
 
 export interface FocusSummary {
@@ -21,4 +22,10 @@ export interface FocusSummary {
   savingsTotal: number;
   savingsCount: number;
   topSavings: SavingOpportunity[];
+  /** Which backing dataset served this response */
+  dataSource?: FocusSummaryDataSource;
+  /** ISO date — costs after this date are provisional and may be restated */
+  provisionalUntil?: string;
+  /** True when the tenant has any ingested rows */
+  hasLiveData?: boolean;
 }

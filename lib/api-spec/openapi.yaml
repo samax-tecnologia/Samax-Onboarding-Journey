@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: focus
     description: FinOps FOCUS dashboard operations
+  - name: connections
+    description: Provider data connections (AWS / Azure / GCP / sample)
 paths:
   /healthz:
     get:
@@ -126,6 +128,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FocusBreakdown"
+
+  /connections:
+    get:
+      operationId: listConnections
+      tags: [connections]
+      summary: List provider connections for the current tenant
+      responses:
+        "200":
+          description: Connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionList"
+    post:
+      operationId: createConnection
+      tags: [connections]
+      summary: Add a new provider connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Connection"
+
+  /connections/{id}:
+    delete:
+      operationId: deleteConnection
+      tags: [connections]
+      summary: Remove a provider connection
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /connections/{id}/sync:
+    post:
+      operationId: syncConnection
+      tags: [connections]
+      summary: Trigger an on-demand sync for a connection
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResult"
 
   /focus/savings:
     get:
@@ -289,6 +353,75 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SavingOpportunity"
+        dataSource:
+          type: string
+          enum: [mock, live]
+          description: Which backing dataset served this response
+        provisionalUntil:
+          type: string
+          description: ISO date — costs after this date are provisional and may be restated
+        hasLiveData:
+          type: boolean
+          description: True when the tenant has any ingested rows
+
+    ConnectionInput:
+      type: object
+      required: [provider, displayName]
+      properties:
+        provider:
+          type: string
+          enum: [sample, aws, azure, gcp]
+        displayName: { type: string }
+        config:
+          type: object
+          additionalProperties: true
+        secretRef:
+          type: string
+          description: Name of the Replit Secret holding sensitive credentials
+        refreshIntervalHours:
+          type: string
+          enum: ["4", "24"]
+          description: Auto-refresh interval. 4h is only valid for Azure connections.
+
+    Connection:
+      type: object
+      required: [id, tenantId, provider, displayName, status, createdAt]
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        provider: { type: string }
+        displayName: { type: string }
+        config:
+          type: object
+          additionalProperties: true
+        secretRef: { type: string }
+        status: { type: string, enum: [pending, ok, error, syncing] }
+        lastError: { type: string }
+        lastSyncedAt: { type: string }
+        nextSyncAt: { type: string }
+        refreshIntervalHours: { type: string }
+        createdAt: { type: string }
+
+    ConnectionList:
+      type: object
+      required: [tenantId, dataSource, hasLiveData, connections]
+      properties:
+        tenantId: { type: string }
+        dataSource: { type: string, enum: [mock, live] }
+        hasLiveData: { type: boolean }
+        connections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Connection"
+
+    SyncResult:
+      type: object
+      required: [status, rowsUpserted, partitionsRead]
+      properties:
+        status: { type: string, enum: [ok, error] }
+        rowsUpserted: { type: integer }
+        partitionsRead: { type: integer }
+        error: { type: string }
 
     TimeSeriesPoint:
       type: object

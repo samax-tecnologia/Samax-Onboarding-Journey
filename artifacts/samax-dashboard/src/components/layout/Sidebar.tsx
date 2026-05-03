@@ -7,6 +7,7 @@ import {
   Users,
   Package,
   Settings,
+  Plug,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const navTop: NavItem[] = [
 ];
 
 const navBottom: NavItem[] = [
+  { path: "/conexoes", label: "Conexões", icon: Plug },
   { path: "/configuracoes", label: "Configurações", icon: Settings, disabled: true },
 ];
 

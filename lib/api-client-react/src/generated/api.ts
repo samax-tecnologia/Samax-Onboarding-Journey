@@ -5,15 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
 import type {
+  Connection,
+  ConnectionInput,
+  ConnectionList,
   FocusBreakdown,
   FocusFilters,
   FocusSavings,
@@ -24,10 +30,11 @@ import type {
   GetFocusSummaryParams,
   GetFocusTimeSeriesParams,
   HealthStatus,
+  SyncResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -473,6 +480,335 @@ export function useGetFocusBreakdown<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List provider connections for the current tenant
+ */
+export const getListConnectionsUrl = () => {
+  return `/api/connections`;
+};
+
+export const listConnections = async (
+  options?: RequestInit,
+): Promise<ConnectionList> => {
+  return customFetch<ConnectionList>(getListConnectionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListConnectionsQueryKey = () => {
+  return [`/api/connections`] as const;
+};
+
+export const getListConnectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listConnections>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listConnections>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListConnectionsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listConnections>>> = ({
+    signal,
+  }) => listConnections({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listConnections>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListConnectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listConnections>>
+>;
+export type ListConnectionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List provider connections for the current tenant
+ */
+
+export function useListConnections<
+  TData = Awaited<ReturnType<typeof listConnections>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listConnections>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListConnectionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new provider connection
+ */
+export const getCreateConnectionUrl = () => {
+  return `/api/connections`;
+};
+
+export const createConnection = async (
+  connectionInput: ConnectionInput,
+  options?: RequestInit,
+): Promise<Connection> => {
+  return customFetch<Connection>(getCreateConnectionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(connectionInput),
+  });
+};
+
+export const getCreateConnectionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createConnection>>,
+    TError,
+    { data: BodyType<ConnectionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createConnection>>,
+  TError,
+  { data: BodyType<ConnectionInput> },
+  TContext
+> => {
+  const mutationKey = ["createConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createConnection>>,
+    { data: BodyType<ConnectionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createConnection(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createConnection>>
+>;
+export type CreateConnectionMutationBody = BodyType<ConnectionInput>;
+export type CreateConnectionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a new provider connection
+ */
+export const useCreateConnection = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createConnection>>,
+    TError,
+    { data: BodyType<ConnectionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createConnection>>,
+  TError,
+  { data: BodyType<ConnectionInput> },
+  TContext
+> => {
+  return useMutation(getCreateConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Remove a provider connection
+ */
+export const getDeleteConnectionUrl = (id: string) => {
+  return `/api/connections/${id}`;
+};
+
+export const deleteConnection = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteConnectionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteConnectionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConnection>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteConnection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteConnection>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteConnection(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteConnection>>
+>;
+
+export type DeleteConnectionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a provider connection
+ */
+export const useDeleteConnection = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteConnection>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteConnection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteConnectionMutationOptions(options));
+};
+
+/**
+ * @summary Trigger an on-demand sync for a connection
+ */
+export const getSyncConnectionUrl = (id: string) => {
+  return `/api/connections/${id}/sync`;
+};
+
+export const syncConnection = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SyncResult> => {
+  return customFetch<SyncResult>(getSyncConnectionUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSyncConnectionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncConnection>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncConnection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["syncConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncConnection>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return syncConnection(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncConnection>>
+>;
+
+export type SyncConnectionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Trigger an on-demand sync for a connection
+ */
+export const useSyncConnection = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncConnection>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncConnection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getSyncConnectionMutationOptions(options));
+};
 
 /**
  * @summary Identified savings opportunities

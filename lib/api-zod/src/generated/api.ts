@@ -91,6 +91,20 @@ export const GetFocusSummaryResponse = zod.object({
       details: zod.string().optional(),
     }),
   ),
+  dataSource: zod
+    .enum(["mock", "live"])
+    .optional()
+    .describe("Which backing dataset served this response"),
+  provisionalUntil: zod
+    .string()
+    .optional()
+    .describe(
+      "ISO date — costs after this date are provisional and may be restated",
+    ),
+  hasLiveData: zod
+    .boolean()
+    .optional()
+    .describe("True when the tenant has any ingested rows"),
 });
 
 /**
@@ -216,6 +230,69 @@ export const GetFocusBreakdownResponse = zod.object({
       meta: zod.record(zod.string(), zod.string()).optional(),
     }),
   ),
+});
+
+/**
+ * @summary List provider connections for the current tenant
+ */
+export const ListConnectionsResponse = zod.object({
+  tenantId: zod.string(),
+  dataSource: zod.enum(["mock", "live"]),
+  hasLiveData: zod.boolean(),
+  connections: zod.array(
+    zod.object({
+      id: zod.string(),
+      tenantId: zod.string(),
+      provider: zod.string(),
+      displayName: zod.string(),
+      config: zod.record(zod.string(), zod.unknown()).optional(),
+      secretRef: zod.string().optional(),
+      status: zod.enum(["pending", "ok", "error", "syncing"]),
+      lastError: zod.string().optional(),
+      lastSyncedAt: zod.string().optional(),
+      nextSyncAt: zod.string().optional(),
+      refreshIntervalHours: zod.string().optional(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a new provider connection
+ */
+export const CreateConnectionBody = zod.object({
+  provider: zod.enum(["sample", "aws", "azure", "gcp"]),
+  displayName: zod.string(),
+  config: zod.record(zod.string(), zod.unknown()).optional(),
+  secretRef: zod
+    .string()
+    .optional()
+    .describe("Name of the Replit Secret holding sensitive credentials"),
+  refreshIntervalHours: zod
+    .enum(["4", "24"])
+    .optional()
+    .describe("Auto-refresh interval. 4h is only valid for Azure connections."),
+});
+
+/**
+ * @summary Remove a provider connection
+ */
+export const DeleteConnectionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Trigger an on-demand sync for a connection
+ */
+export const SyncConnectionParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SyncConnectionResponse = zod.object({
+  status: zod.enum(["ok", "error"]),
+  rowsUpserted: zod.number(),
+  partitionsRead: zod.number(),
+  error: zod.string().optional(),
 });
 
 /**

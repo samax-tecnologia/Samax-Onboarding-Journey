@@ -1,5 +1,6 @@
 import { Globe, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TenantSwitcher } from "./TenantSwitcher";
 
 export function Header() {
   return (
@@ -8,11 +9,10 @@ export function Header() {
         <span>Samax</span>
         <span>/</span>
         <span>FinOps</span>
-        <span>/</span>
-        <span className="text-foreground font-medium">Visão geral</span>
       </div>
 
       <div className="flex items-center gap-2">
+        <TenantSwitcher />
         <Button
           variant="outline"
           size="sm"

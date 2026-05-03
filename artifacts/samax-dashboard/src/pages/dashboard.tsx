@@ -8,6 +8,7 @@ import { FocusBreakdownCard } from "@/components/dashboard/FocusBreakdownCard";
 import { DimensionListCard } from "@/components/dashboard/DimensionListCard";
 import { SavingsTable } from "@/components/dashboard/SavingsTable";
 import { PrintHeader } from "@/components/dashboard/PrintHeader";
+import { EmptyLiveBanner, ProvisionalBadge } from "@/components/dashboard/EmptyLiveBanner";
 
 export default function DashboardPage() {
   const savingsRef = useRef<HTMLDivElement>(null);
@@ -17,12 +18,17 @@ export default function DashboardPage() {
       <FilterBar />
       <div className="px-8 py-6 space-y-6 print:px-4 print:py-2 print:space-y-3">
         <PrintHeader />
-        <div className="print:hidden">
-          <h1 className="text-2xl font-semibold tracking-tight">FinOps Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visão multi-cloud do seu gasto, organizada pelo padrão FOCUS.
-          </p>
+        <div className="print:hidden flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">FinOps Overview</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Visão multi-cloud do seu gasto, organizada pelo padrão FOCUS.
+            </p>
+          </div>
+          <ProvisionalBadge />
         </div>
+
+        <EmptyLiveBanner />
 
         {/* Top-of-page priority */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
