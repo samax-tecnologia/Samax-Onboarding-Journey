@@ -15,6 +15,10 @@ export default function UnitEconomicsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  // When the user starts from "Importar CSV" in the empty state we don't have a
+  // metric yet — so we open the editor first and remember to chain the CSV
+  // dialog right after the metric is created.
+  const [importAfterCreate, setImportAfterCreate] = useState(false);
 
   // Keep a valid selection at all times.
   useEffect(() => {
@@ -38,7 +42,9 @@ export default function UnitEconomicsPage() {
       <div className="px-8 py-6 space-y-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Unit Economics</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Custo unitário <span className="text-muted-foreground font-normal">(Unit Economics)</span>
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Conecte seu gasto multi-cloud a unidades de negócio (clientes, transações, FTEs, receita) e
               acompanhe o custo unitário ao longo do tempo.
@@ -52,7 +58,16 @@ export default function UnitEconomicsPage() {
         </div>
 
         {metrics.length === 0 ? (
-          <EmptyState onAdd={() => setEditorOpen(true)} onImport={() => setCsvOpen(true)} />
+          <EmptyState
+            onAdd={() => {
+              setImportAfterCreate(false);
+              setEditorOpen(true);
+            }}
+            onImport={() => {
+              setImportAfterCreate(true);
+              setEditorOpen(true);
+            }}
+          />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-6">
             <MetricList
@@ -78,13 +93,16 @@ export default function UnitEconomicsPage() {
         <MetricEditor
           open={editorOpen}
           onOpenChange={setEditorOpen}
-          onSaved={(m) => setSelectedId(m.id)}
+          onSaved={(m) => {
+            setSelectedId(m.id);
+            if (importAfterCreate) {
+              setImportAfterCreate(false);
+              // Defer one tick so the editor finishes closing before we open the
+              // CSV dialog over it.
+              setTimeout(() => setCsvOpen(true), 0);
+            }
+          }}
         />
-        {/*
-          The "Import CSV" empty-state CTA needs a metric. We use a transient placeholder approach:
-          create a metric first via editor; the per-metric detail view exposes its own CSV import.
-          So in the empty state we instead route the user to "Nova métrica" — see EmptyState.
-        */}
         {selected && (
           <CsvImportDialog open={csvOpen} onOpenChange={setCsvOpen} metric={selected} />
         )}
@@ -177,17 +195,15 @@ function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => vo
           <Button onClick={onAdd} data-testid="empty-add-metric">
             <Plus className="w-4 h-4 mr-1.5" /> Adicionar métrica manualmente
           </Button>
-          <Button variant="outline" onClick={onAdd} data-testid="empty-import-csv">
+          <Button variant="outline" onClick={onImport} data-testid="empty-import-csv">
             <Upload className="w-4 h-4 mr-1.5" /> Importar CSV
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Os modelos prontos incluem custo por colaborador, custo por FTE de tecnologia e custo de
-          tecnologia como % da receita. Após criar a métrica, importe o denominador via CSV ou preencha
-          mês a mês.
+          tecnologia como % da receita. Ao importar um CSV, criamos a métrica primeiro e em seguida
+          abrimos o assistente de importação.
         </p>
-        {/* keep onImport referenced so unused-warning doesn't fire when we later wire it up */}
-        <span className="hidden">{String(onImport)}</span>
       </CardContent>
     </Card>
   );

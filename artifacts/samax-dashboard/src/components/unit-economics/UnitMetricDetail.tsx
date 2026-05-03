@@ -316,6 +316,9 @@ function UnitCostChart({
             axisLine={false}
             tickFormatter={(v) => formatCurrency(Number(v), currency, { compact: true })}
           />
+          {/* Hidden axis purely for the volume line, so it gets its own scale
+              instead of being plotted against the (currency/percent) unit-cost axis. */}
+          <YAxis yAxisId="volume" orientation="right" hide domain={["auto", "auto"]} />
           <Tooltip
             contentStyle={{
               background: "hsl(var(--popover))",
@@ -351,7 +354,7 @@ function UnitCostChart({
             connectNulls
           />
           <Line
-            yAxisId="left"
+            yAxisId="volume"
             type="monotone"
             dataKey="volume"
             name="Volume"
