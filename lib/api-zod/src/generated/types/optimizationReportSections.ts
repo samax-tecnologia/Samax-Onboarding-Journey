@@ -13,6 +13,7 @@ import type { ReportEfficiencyMetric } from "./reportEfficiencyMetric";
 import type { ReportOpportunity } from "./reportOpportunity";
 import type { ReportTimeSeriesPoint } from "./reportTimeSeriesPoint";
 import type { ReportTopWin } from "./reportTopWin";
+import type { ReportUnitEconomicsMetric } from "./reportUnitEconomicsMetric";
 
 export type OptimizationReportSections = {
   timeSeries: ReportTimeSeriesPoint[];
@@ -27,4 +28,6 @@ export type OptimizationReportSections = {
   appliedChanges: ReportAppliedChange[];
   openOpportunities: ReportOpportunity[];
   baselineSnapshot: OptimizationReportSectionsBaselineSnapshot;
+  /** Per-metric unit economics computed for the report period. */
+  unitEconomics?: ReportUnitEconomicsMetric[];
 };

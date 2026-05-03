@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OptimizationReportInputCostType } from "./optimizationReportInputCostType";
+import type { ReportUnitEconomicsInput } from "./reportUnitEconomicsInput";
 
 export interface OptimizationReportInput {
   title: string;
@@ -17,4 +18,6 @@ export interface OptimizationReportInput {
   baselineId?: string;
   costType?: OptimizationReportInputCostType;
   author?: string;
+  /** Optional unit-economics metrics (with denominator data) to include in the report. */
+  unitEconomics?: ReportUnitEconomicsInput[];
 }

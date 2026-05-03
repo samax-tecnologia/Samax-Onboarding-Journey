@@ -514,6 +514,32 @@ export const CreateOptimizationReportBody = zod.object({
     .describe("If omitted, the active baseline (or most recent) is used."),
   costType: zod.enum(["BilledCost", "EffectiveCost"]).optional(),
   author: zod.string().optional(),
+  unitEconomics: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        unitLabel: zod.string(),
+        format: zod.enum(["currency", "percent"]),
+        granularity: zod.enum(["month", "day"]).optional(),
+        numerator: zod
+          .object({
+            providers: zod.array(zod.string()).optional(),
+            teams: zod.array(zod.string()).optional(),
+            products: zod.array(zod.string()).optional(),
+          })
+          .optional(),
+        denominator: zod
+          .record(zod.string(), zod.number())
+          .describe(
+            "Map of period key (YYYY-MM or YYYY-MM-DD) to denominator value.",
+          ),
+      }),
+    )
+    .optional()
+    .describe(
+      "Optional unit-economics metrics (with denominator data) to include in the report.",
+    ),
 });
 
 /**
@@ -670,6 +696,34 @@ export const GetOptimizationReportResponse = zod
           monthlyAvg: zod.number(),
           months: zod.number(),
         }),
+        unitEconomics: zod
+          .array(
+            zod.object({
+              id: zod.string(),
+              name: zod.string(),
+              unitLabel: zod.string(),
+              format: zod.enum(["currency", "percent"]),
+              granularity: zod.enum(["month", "day"]),
+              currentUnitCost: zod.number().nullish(),
+              previousUnitCost: zod.number().nullish(),
+              delta: zod.number().nullish(),
+              deltaPercent: zod.number().nullish(),
+              currentPeriodLabel: zod.string().nullish(),
+              previousPeriodLabel: zod.string().nullish(),
+              series: zod.array(
+                zod.object({
+                  period: zod.string(),
+                  cost: zod.number(),
+                  volume: zod.number().nullish(),
+                  unitCost: zod.number().nullish(),
+                }),
+              ),
+            }),
+          )
+          .optional()
+          .describe(
+            "Per-metric unit economics computed for the report period.",
+          ),
       }),
     }),
   );

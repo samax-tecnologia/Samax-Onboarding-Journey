@@ -9,6 +9,11 @@ import {
 } from "./focus-aggregate";
 import type { FocusRow } from "./focus-mock";
 import type { AppliedChange, Baseline } from "@workspace/db";
+import {
+  buildUnitEconomicsForReport,
+  type UnitEconomicsInput,
+  type UnitEconomicsMetric,
+} from "./report-unit-economics";
 
 const CURRENCY = "USD";
 
@@ -106,6 +111,7 @@ export type ComputedReport = {
       monthlyAvg: number;
       months: number;
     };
+    unitEconomics?: UnitEconomicsMetric[];
   };
 };
 
@@ -459,8 +465,9 @@ export async function computeReport(args: {
   costType: CostType;
   baseline: Baseline;
   appliedChanges: AppliedChange[];
+  unitEconomics?: UnitEconomicsInput[];
 }): Promise<ComputedReport> {
-  const { tenantId, tenantDataSource, periodStart, periodEnd, costType, baseline, appliedChanges } = args;
+  const { tenantId, tenantDataSource, periodStart, periodEnd, costType, baseline, appliedChanges, unitEconomics } = args;
   const ds = await loadDataset(tenantId, tenantDataSource);
   const rows = applyFilters(ds.monthlyRows, {
     startDate: periodStart,
@@ -590,6 +597,16 @@ export async function computeReport(args: {
     monthsCurrent,
     monthsBaseline,
   });
+  const unitEconomicsMetrics =
+    unitEconomics && unitEconomics.length > 0
+      ? buildUnitEconomicsForReport({
+          ds,
+          periodStart,
+          periodEnd,
+          costType,
+          inputs: unitEconomics,
+        })
+      : undefined;
 
   return {
     currency: CURRENCY,
@@ -664,6 +681,7 @@ export async function computeReport(args: {
         monthlyAvg: r2(baseline.metrics.monthlyAvg),
         months: baseline.metrics.months,
       },
+      ...(unitEconomicsMetrics ? { unitEconomics: unitEconomicsMetrics } : {}),
     },
   };
 }

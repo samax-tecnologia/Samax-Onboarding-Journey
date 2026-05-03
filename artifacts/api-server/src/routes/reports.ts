@@ -342,6 +342,15 @@ router.post("/optimization-reports", async (req, res) => {
     costType,
     baseline,
     appliedChanges: changes,
+    unitEconomics: parsed.data.unitEconomics?.map((m) => ({
+      id: m.id,
+      name: m.name,
+      unitLabel: m.unitLabel,
+      format: m.format,
+      granularity: m.granularity,
+      numerator: m.numerator,
+      denominator: m.denominator,
+    })),
   });
 
   const [created] = await db

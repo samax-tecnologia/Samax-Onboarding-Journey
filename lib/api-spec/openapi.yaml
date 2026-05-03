@@ -873,6 +873,41 @@ components:
           type: string
           enum: [BilledCost, EffectiveCost]
         author: { type: string }
+        unitEconomics:
+          type: array
+          description: "Optional unit-economics metrics (with denominator data) to include in the report."
+          items:
+            $ref: "#/components/schemas/ReportUnitEconomicsInput"
+
+    ReportUnitEconomicsInput:
+      type: object
+      required: [id, name, unitLabel, format, denominator]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        unitLabel: { type: string }
+        format:
+          type: string
+          enum: [currency, percent]
+        granularity:
+          type: string
+          enum: [month, day]
+        numerator:
+          type: object
+          properties:
+            providers:
+              type: array
+              items: { type: string }
+            teams:
+              type: array
+              items: { type: string }
+            products:
+              type: array
+              items: { type: string }
+        denominator:
+          type: object
+          additionalProperties: { type: number }
+          description: "Map of period key (YYYY-MM or YYYY-MM-DD) to denominator value."
 
     OptimizationReportSummary:
       type: object
@@ -994,6 +1029,52 @@ components:
                     totalCost: { type: number }
                     monthlyAvg: { type: number }
                     months: { type: integer }
+                unitEconomics:
+                  type: array
+                  description: "Per-metric unit economics computed for the report period."
+                  items:
+                    $ref: "#/components/schemas/ReportUnitEconomicsMetric"
+
+    ReportUnitEconomicsMetric:
+      type: object
+      required: [id, name, unitLabel, format, granularity, series]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        unitLabel: { type: string }
+        format:
+          type: string
+          enum: [currency, percent]
+        granularity:
+          type: string
+          enum: [month, day]
+        currentUnitCost:
+          type: ["number", "null"]
+        previousUnitCost:
+          type: ["number", "null"]
+        delta:
+          type: ["number", "null"]
+        deltaPercent:
+          type: ["number", "null"]
+        currentPeriodLabel:
+          type: ["string", "null"]
+        previousPeriodLabel:
+          type: ["string", "null"]
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportUnitEconomicsPoint"
+
+    ReportUnitEconomicsPoint:
+      type: object
+      required: [period, cost]
+      properties:
+        period: { type: string }
+        cost: { type: number }
+        volume:
+          type: ["number", "null"]
+        unitCost:
+          type: ["number", "null"]
 
     ReportTimeSeriesPoint:
       type: object

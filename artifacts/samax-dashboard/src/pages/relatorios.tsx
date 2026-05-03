@@ -69,6 +69,7 @@ import {
   Layers,
 } from "lucide-react";
 import { customFetchUrl } from "@/lib/report-pdf-url";
+import { useUnitEconomics } from "@/lib/unit-economics-store";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", {
@@ -317,6 +318,7 @@ function ReportWizardDialog({
   const create = useCreateOptimizationReport();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { metrics: unitMetrics, getData: getUnitData } = useUnitEconomics();
 
   const def = defaultPeriod(filters?.periodEnd);
   const [title, setTitle] = useState("");
@@ -343,6 +345,22 @@ function ReportWizardDialog({
       return;
     }
     try {
+      // Include every defined metric for the tenant, even when the
+      // denominator is empty — the report will render a "sem dados" sparkline
+      // so the user sees the metric exists but lacks volume data.
+      const unitEconomics = unitMetrics.map((m) => ({
+        id: m.id,
+        name: m.name,
+        unitLabel: m.unitLabel,
+        format: m.format,
+        granularity: m.granularity ?? "month",
+        numerator: {
+          providers: m.numerator.providers,
+          teams: m.numerator.teams,
+          products: m.numerator.products,
+        },
+        denominator: getUnitData(m.id),
+      }));
       const created = await create.mutateAsync({
         data: {
           title: title.trim(),
@@ -350,6 +368,7 @@ function ReportWizardDialog({
           periodEnd: end,
           baselineId: baselineId || undefined,
           author: author.trim() || undefined,
+          ...(unitEconomics.length > 0 ? { unitEconomics } : {}),
         },
       });
       qc.invalidateQueries({ queryKey: getListOptimizationReportsQueryKey() });
@@ -525,6 +544,72 @@ function ReportViewer({ reportId, onBack }: { reportId: string; onBack: () => vo
         </Card>
       )}
 
+      {r.sections.unitEconomics && r.sections.unitEconomics.length > 0 && (
+        <Card data-testid="report-unit-economics">
+          <CardHeader>
+            <CardTitle className="text-base">Unit Economics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {r.sections.unitEconomics.map((m) => {
+                const fmt = (v: number | null | undefined) =>
+                  v == null
+                    ? "—"
+                    : m.format === "percent"
+                      ? formatPercent(v)
+                      : formatCurrency(v, r.currency);
+                const delta = m.delta ?? null;
+                const deltaPercent = m.deltaPercent ?? null;
+                const positive = (delta ?? 0) <= 0; // lower unit cost is better
+                return (
+                  <div
+                    key={m.id}
+                    className="border rounded-md p-3 bg-muted/20"
+                    data-testid={`unit-economics-${m.id}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{m.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          por {m.unitLabel} · {m.granularity === "day" ? "diário" : "mensal"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold tabular-nums">
+                          {fmt(m.currentUnitCost)}
+                        </div>
+                        {delta !== null && (
+                          <div
+                            className={`text-xs tabular-nums ${
+                              positive ? "text-emerald-600" : "text-red-600"
+                            }`}
+                          >
+                            {delta >= 0 ? "+" : ""}
+                            {fmt(delta)}
+                            {deltaPercent !== null
+                              ? ` (${deltaPercent >= 0 ? "+" : ""}${(deltaPercent * 100).toFixed(1)}%)`
+                              : ""}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <UnitSparkline series={m.series} />
+                    <div className="text-[11px] text-muted-foreground mt-1 flex justify-between">
+                      <span>Anterior: {fmt(m.previousUnitCost)}</span>
+                      {m.currentPeriodLabel && m.previousPeriodLabel && (
+                        <span>
+                          {m.previousPeriodLabel} → {m.currentPeriodLabel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {r.sections.efficiency && r.sections.efficiency.length > 0 && (
         <Card data-testid="report-efficiency">
           <CardHeader>
@@ -657,6 +742,47 @@ function ReportViewer({ reportId, onBack }: { reportId: string; onBack: () => vo
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function UnitSparkline({
+  series,
+}: {
+  series: NonNullable<OptimizationReport["sections"]["unitEconomics"]>[number]["series"];
+}) {
+  const points = (series ?? []).filter(
+    (p): p is typeof p & { unitCost: number } => p.unitCost !== null && p.unitCost !== undefined,
+  );
+  if (points.length === 0) {
+    return (
+      <div className="text-[11px] text-muted-foreground italic mt-2">
+        Sem dados de denominador no período.
+      </div>
+    );
+  }
+  const w = 280;
+  const h = 48;
+  const values = points.map((p) => p.unitCost);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || Math.max(1e-9, Math.abs(max) || 1);
+  const xFor = (i: number) => (w * i) / Math.max(1, points.length - 1);
+  const yFor = (v: number) => h - ((v - min) / span) * (h - 6) - 3;
+  const path = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${xFor(i).toFixed(1)},${yFor(p.unitCost).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="w-full h-12 mt-2"
+      role="img"
+      aria-label="Tendência do custo unitário"
+    >
+      <path d={path} stroke="hsl(var(--primary))" strokeWidth={1.5} fill="none" />
+      {points.map((p, i) => (
+        <circle key={i} cx={xFor(i)} cy={yFor(p.unitCost)} r={1.6} fill="hsl(var(--primary))" />
+      ))}
+    </svg>
   );
 }
 

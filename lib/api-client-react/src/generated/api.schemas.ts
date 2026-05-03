@@ -369,6 +369,44 @@ export const OptimizationReportInputCostType = {
   EffectiveCost: "EffectiveCost",
 } as const;
 
+export type ReportUnitEconomicsInputFormat =
+  (typeof ReportUnitEconomicsInputFormat)[keyof typeof ReportUnitEconomicsInputFormat];
+
+export const ReportUnitEconomicsInputFormat = {
+  currency: "currency",
+  percent: "percent",
+} as const;
+
+export type ReportUnitEconomicsInputGranularity =
+  (typeof ReportUnitEconomicsInputGranularity)[keyof typeof ReportUnitEconomicsInputGranularity];
+
+export const ReportUnitEconomicsInputGranularity = {
+  month: "month",
+  day: "day",
+} as const;
+
+export type ReportUnitEconomicsInputNumerator = {
+  providers?: string[];
+  teams?: string[];
+  products?: string[];
+};
+
+/**
+ * Map of period key (YYYY-MM or YYYY-MM-DD) to denominator value.
+ */
+export type ReportUnitEconomicsInputDenominator = { [key: string]: number };
+
+export interface ReportUnitEconomicsInput {
+  id: string;
+  name: string;
+  unitLabel: string;
+  format: ReportUnitEconomicsInputFormat;
+  granularity?: ReportUnitEconomicsInputGranularity;
+  numerator?: ReportUnitEconomicsInputNumerator;
+  /** Map of period key (YYYY-MM or YYYY-MM-DD) to denominator value. */
+  denominator: ReportUnitEconomicsInputDenominator;
+}
+
 export interface OptimizationReportInput {
   title: string;
   /** ISO date (YYYY-MM-DD), inclusive */
@@ -379,6 +417,8 @@ export interface OptimizationReportInput {
   baselineId?: string;
   costType?: OptimizationReportInputCostType;
   author?: string;
+  /** Optional unit-economics metrics (with denominator data) to include in the report. */
+  unitEconomics?: ReportUnitEconomicsInput[];
 }
 
 export interface OptimizationReportSummary {
@@ -494,6 +534,52 @@ export interface ReportOpportunity {
   product?: string;
 }
 
+export type ReportUnitEconomicsMetricFormat =
+  (typeof ReportUnitEconomicsMetricFormat)[keyof typeof ReportUnitEconomicsMetricFormat];
+
+export const ReportUnitEconomicsMetricFormat = {
+  currency: "currency",
+  percent: "percent",
+} as const;
+
+export type ReportUnitEconomicsMetricGranularity =
+  (typeof ReportUnitEconomicsMetricGranularity)[keyof typeof ReportUnitEconomicsMetricGranularity];
+
+export const ReportUnitEconomicsMetricGranularity = {
+  month: "month",
+  day: "day",
+} as const;
+
+export interface ReportUnitEconomicsPoint {
+  period: string;
+  cost: number;
+  /** @nullable */
+  volume?: number | null;
+  /** @nullable */
+  unitCost?: number | null;
+}
+
+export interface ReportUnitEconomicsMetric {
+  id: string;
+  name: string;
+  unitLabel: string;
+  format: ReportUnitEconomicsMetricFormat;
+  granularity: ReportUnitEconomicsMetricGranularity;
+  /** @nullable */
+  currentUnitCost?: number | null;
+  /** @nullable */
+  previousUnitCost?: number | null;
+  /** @nullable */
+  delta?: number | null;
+  /** @nullable */
+  deltaPercent?: number | null;
+  /** @nullable */
+  currentPeriodLabel?: string | null;
+  /** @nullable */
+  previousPeriodLabel?: string | null;
+  series: ReportUnitEconomicsPoint[];
+}
+
 export type OptimizationReportSections = {
   timeSeries: ReportTimeSeriesPoint[];
   efficiency: ReportEfficiencyMetric[];
@@ -507,6 +593,8 @@ export type OptimizationReportSections = {
   appliedChanges: ReportAppliedChange[];
   openOpportunities: ReportOpportunity[];
   baselineSnapshot: OptimizationReportSectionsBaselineSnapshot;
+  /** Per-metric unit economics computed for the report period. */
+  unitEconomics?: ReportUnitEconomicsMetric[];
 };
 
 export type OptimizationReport = OptimizationReportSummary & {

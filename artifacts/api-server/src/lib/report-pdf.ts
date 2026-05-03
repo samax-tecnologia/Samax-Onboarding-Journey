@@ -5,6 +5,10 @@ import type {
   TimeSeriesPoint,
   EfficiencyMetric,
 } from "./report-compute";
+import type {
+  UnitEconomicsMetric,
+  UnitEconomicsPoint,
+} from "./report-unit-economics";
 
 function fmtUSD(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -113,6 +117,22 @@ export async function renderReportPdf(args: {
     doc.moveDown(0.3);
     drawEfficiencyTable(doc, report.sections.efficiency);
     doc.moveDown(0.6);
+  }
+
+  // Unit economics
+  const ueMetrics = report.sections.unitEconomics ?? [];
+  if (ueMetrics.length > 0) {
+    ensureSpace(doc, 60);
+    doc.fillColor("#111").font("Helvetica-Bold").fontSize(12).text("Unit Economics");
+    doc.fillColor(muted).font("Helvetica").fontSize(9).text(
+      "Custo unitário no período: KPI atual, variação vs período anterior e tendência.",
+    );
+    doc.moveDown(0.4);
+    for (const m of ueMetrics) {
+      drawUnitEconomicsCard(doc, m);
+      doc.moveDown(0.4);
+    }
+    doc.moveDown(0.2);
   }
 
   // Sections
@@ -436,4 +456,146 @@ function drawOppsTable(
     doc.fillColor("#111");
     doc.y = y + 14;
   }
+}
+
+function fmtUnit(value: number | null, format: "currency" | "percent"): string {
+  if (value === null || !Number.isFinite(value)) return "—";
+  if (format === "percent") return `${(value * 100).toFixed(2)}%`;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value < 10 ? 2 : 0,
+  }).format(value);
+}
+
+function fmtPeriodLabel(p: string | null): string {
+  if (!p) return "—";
+  return p;
+}
+
+function drawUnitEconomicsCard(doc: PDFKit.PDFDocument, m: UnitEconomicsMetric) {
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+  const totalW = right - left;
+  const h = 90;
+  ensureSpace(doc, h + 8);
+  const top = doc.y;
+
+  // Card background
+  doc.roundedRect(left, top, totalW, h, 6).fillColor("#f9fafb").fill();
+  doc.roundedRect(left, top, totalW, h, 6).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
+
+  // Title
+  doc.fillColor("#111").font("Helvetica-Bold").fontSize(11).text(m.name, left + 12, top + 10, {
+    width: totalW * 0.55 - 16,
+  });
+  doc.fillColor("#6b7280").font("Helvetica").fontSize(8).text(
+    `por ${m.unitLabel}  ·  ${m.granularity === "day" ? "diário" : "mensal"}`,
+    left + 12,
+    top + 26,
+    { width: totalW * 0.55 - 16 },
+  );
+
+  // KPI block (left side)
+  doc.fillColor("#111").font("Helvetica-Bold").fontSize(16).text(
+    fmtUnit(m.currentUnitCost, m.format),
+    left + 12,
+    top + 44,
+    { width: totalW * 0.4 - 16 },
+  );
+  const previousLine = `Anterior: ${fmtUnit(m.previousUnitCost, m.format)}`;
+  doc.fillColor("#6b7280").font("Helvetica").fontSize(8).text(
+    previousLine,
+    left + 12,
+    top + 66,
+    { width: totalW * 0.4 - 16 },
+  );
+
+  // Delta badge
+  const deltaText = m.delta !== null
+    ? `${m.delta >= 0 ? "+" : ""}${fmtUnit(m.delta, m.format)} (${m.deltaPercent !== null ? `${m.deltaPercent >= 0 ? "+" : ""}${(m.deltaPercent * 100).toFixed(1)}%` : "—"})`
+    : "—";
+  // Lower delta is good for unit cost (cheaper per unit).
+  const deltaColor =
+    m.delta === null ? "#6b7280" : m.delta < 0 ? "#15803d" : m.delta > 0 ? "#b91c1c" : "#6b7280";
+  doc.fillColor(deltaColor).font("Helvetica-Bold").fontSize(9).text(
+    deltaText,
+    left + totalW * 0.32,
+    top + 50,
+    { width: totalW * 0.18 },
+  );
+  if (m.currentPeriodLabel || m.previousPeriodLabel) {
+    doc.fillColor("#9ca3af").font("Helvetica").fontSize(7).text(
+      `${fmtPeriodLabel(m.previousPeriodLabel)} → ${fmtPeriodLabel(m.currentPeriodLabel)}`,
+      left + totalW * 0.32,
+      top + 66,
+      { width: totalW * 0.18 },
+    );
+  }
+
+  // Sparkline (right side)
+  drawUnitSparkline(doc, m.series, {
+    x: left + totalW * 0.52,
+    y: top + 12,
+    w: totalW * 0.45,
+    h: h - 24,
+  });
+
+  doc.fillColor("#111");
+  doc.y = top + h + 4;
+  doc.x = left;
+}
+
+function drawUnitSparkline(
+  doc: PDFKit.PDFDocument,
+  series: UnitEconomicsPoint[],
+  rect: { x: number; y: number; w: number; h: number },
+) {
+  const points = series.filter((p) => p.unitCost !== null);
+  if (points.length === 0) {
+    doc.fillColor("#9ca3af").font("Helvetica-Oblique").fontSize(8).text(
+      "Sem dados de denominador no período.",
+      rect.x,
+      rect.y + rect.h / 2 - 4,
+      { width: rect.w, align: "center" },
+    );
+    return;
+  }
+  const values = points.map((p) => p.unitCost as number);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || Math.max(1e-9, Math.abs(max) || 1);
+  const xFor = (i: number) =>
+    rect.x + (rect.w * i) / Math.max(1, points.length - 1);
+  const yFor = (v: number) =>
+    rect.y + (rect.h - 8) * (1 - (v - min) / span) + 4;
+
+  // Frame
+  doc.strokeColor("#e5e7eb").lineWidth(0.4)
+    .moveTo(rect.x, rect.y + rect.h)
+    .lineTo(rect.x + rect.w, rect.y + rect.h)
+    .stroke();
+
+  // Line
+  doc.strokeColor("#5b21b6").lineWidth(1.4);
+  points.forEach((p, i) => {
+    const x = xFor(i);
+    const y = yFor(p.unitCost as number);
+    if (i === 0) doc.moveTo(x, y);
+    else doc.lineTo(x, y);
+  });
+  doc.stroke();
+
+  // Dots
+  doc.fillColor("#5b21b6");
+  points.forEach((p, i) => {
+    doc.circle(xFor(i), yFor(p.unitCost as number), 1.6).fill();
+  });
+
+  // First / last labels
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  doc.fillColor("#9ca3af").font("Helvetica").fontSize(7);
+  doc.text(first.period, rect.x, rect.y + rect.h + 1, { width: rect.w / 2, align: "left" });
+  doc.text(last.period, rect.x + rect.w / 2, rect.y + rect.h + 1, { width: rect.w / 2, align: "right" });
 }
