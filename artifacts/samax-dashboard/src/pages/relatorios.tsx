@@ -54,6 +54,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   Sparkles,
@@ -877,12 +887,97 @@ function ComparisonCard({
   currency: string;
 }) {
   if (rows.length === 0) return null;
+  // Top items by absolute variation, capped, for the chart.
+  // Keep the unique row key as the category so distinct items with similar
+  // labels never collide on the Y axis; render the (possibly truncated)
+  // label via tick formatter and expose the full label in the tooltip.
+  const chartRows = [...rows]
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, 8)
+    .map((r) => ({
+      key: r.key,
+      label: r.label,
+      atual: r.current,
+      baseline: r.baseline,
+      delta: r.delta,
+    }));
+  const labelByKey = new Map(chartRows.map((r) => [r.key, r.label]));
+  const chartHeight = Math.max(180, chartRows.length * 40 + 40);
+  const ariaSummary =
+    `Comparação ${title}: barras horizontais com Atual e Baseline para os ${chartRows.length} itens com maior variação` +
+    (rows.length > chartRows.length ? ` de um total de ${rows.length}.` : ".");
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
+        <div
+          style={{ height: chartHeight }}
+          className="w-full"
+          role="img"
+          aria-label={ariaSummary}
+          data-testid={`comparison-chart-${title}`}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartRows}
+              layout="vertical"
+              margin={{ top: 8, right: 16, left: 8, bottom: 0 }}
+              barGap={2}
+              barCategoryGap={8}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+              <XAxis
+                type="number"
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => formatCurrency(Number(v), currency, { compact: true })}
+              />
+              <YAxis
+                type="category"
+                dataKey="key"
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                width={140}
+                tickFormatter={(k: string) => {
+                  const l = labelByKey.get(k) ?? k;
+                  return l.length > 22 ? `${l.slice(0, 20)}…` : l;
+                }}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--accent))", opacity: 0.4 }}
+                contentStyle={{
+                  background: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--popover-border))",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                labelFormatter={(k: string) => labelByKey.get(k) ?? String(k)}
+                formatter={(value: number, name) => [
+                  formatCurrency(value, currency),
+                  name === "atual" ? "Atual" : name === "baseline" ? "Baseline" : String(name),
+                ]}
+              />
+              <Legend
+                iconType="circle"
+                wrapperStyle={{ fontSize: 12, paddingTop: 4 }}
+                formatter={(v) => (v === "atual" ? "Atual" : v === "baseline" ? "Baseline" : v)}
+              />
+              <Bar dataKey="baseline" fill="hsl(var(--chart-2))" radius={[0, 2, 2, 0]} />
+              <Bar dataKey="atual" fill="hsl(var(--chart-1))" radius={[0, 2, 2, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {rows.length > chartRows.length && (
+          <p className="text-[11px] text-muted-foreground -mt-1 mb-2 italic">
+            Gráfico mostra os {chartRows.length} itens com maior variação. Tabela contém todos os {rows.length}.
+          </p>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
