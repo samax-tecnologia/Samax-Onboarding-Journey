@@ -4,6 +4,7 @@ import {
   Sparkles,
   TrendingDown,
   PieChart,
+  Sigma,
   Users,
   Package,
   Settings,
@@ -26,6 +27,7 @@ type NavItem = {
 
 const navTop: NavItem[] = [
   { path: "/", label: "Visão geral", icon: LayoutDashboard },
+  { path: "/unit-economics", label: "Unit Economics", icon: Sigma, isNew: true },
   { path: "/savings", label: "Oportunidades", icon: Sparkles, isNew: true, disabled: true },
   { path: "/trends", label: "Tendências", icon: TrendingDown, disabled: true },
   { path: "/breakdown", label: "Categorias FOCUS", icon: PieChart, disabled: true },
