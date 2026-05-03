@@ -10,6 +10,7 @@ import {
   Settings,
   Plug,
   ClipboardCheck,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,8 @@ type NavItem = {
 const navTop: NavItem[] = [
   { path: "/", label: "Visão geral", icon: LayoutDashboard },
   { path: "/unit-economics", label: "Custo unitário", icon: Sigma, isNew: true },
-  { path: "/savings", label: "Oportunidades", icon: Sparkles, isNew: true, disabled: true },
+  { path: "/relatorios", label: "Relatórios", icon: FileText, isNew: true },
+  { path: "/savings", label: "Oportunidades", icon: Sparkles, disabled: true },
   { path: "/trends", label: "Tendências", icon: TrendingDown, disabled: true },
   { path: "/breakdown", label: "Categorias FOCUS", icon: PieChart, disabled: true },
   { path: "/teams", label: "Times", icon: Users, disabled: true },

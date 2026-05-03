@@ -13,7 +13,12 @@ export async function resolveTenant(
   next: NextFunction,
 ): Promise<void> {
   const header = req.header("x-samax-tenant");
-  const tenantId = (header && header.trim()) || DEFAULT_TENANT;
+  // Fallback to a `?tenant=` query param so direct browser navigation
+  // (e.g. PDF downloads opened in a new tab) can still address the right
+  // tenant without our custom header.
+  const queryTenant = typeof req.query["tenant"] === "string" ? req.query["tenant"] : undefined;
+  const tenantId =
+    (header && header.trim()) || (queryTenant && queryTenant.trim()) || DEFAULT_TENANT;
 
   const rows = await db
     .select({ id: tenantsTable.id, dataSource: tenantsTable.dataSource })

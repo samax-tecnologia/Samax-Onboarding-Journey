@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
-import { useGetFocusSavings } from "@workspace/api-client-react";
+import {
+  useGetFocusSavings,
+  useCreateAppliedChange,
+  getListAppliedChangesQueryKey,
+  getListOptimizationReportsQueryKey,
+} from "@workspace/api-client-react";
 import type { SavingOpportunity } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { useFilters } from "@/lib/filters-store";
 import { formatCurrency, humanize } from "@/lib/format";
 import { Card } from "@/components/ui/card";
@@ -50,6 +57,9 @@ export function SavingsTable() {
   });
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Saving | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const createApplied = useCreateAppliedChange();
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -295,8 +305,50 @@ export function SavingsTable() {
                   <Button variant="outline" className="flex-1" disabled>
                     Atribuir responsável
                   </Button>
-                  <Button className="flex-1" disabled>
-                    Marcar como aplicada
+                  <Button
+                    className="flex-1"
+                    disabled={createApplied.isPending}
+                    data-testid={`mark-applied-${selected.id}`}
+                    onClick={async () => {
+                      try {
+                        await createApplied.mutateAsync({
+                          data: {
+                            opportunityId: selected.id,
+                            title: selected.title,
+                            description: selected.recommendedAction,
+                            scopeProvider: selected.provider,
+                            scopeService: selected.service,
+                            scopeCategory: selected.category,
+                            scopeTeam: selected.team,
+                            scopeProduct: selected.product,
+                            scopeResourceId: selected.resourceId ?? undefined,
+                            estimatedMonthlySavings: selected.monthlySavings,
+                            appliedAt: new Date().toISOString().slice(0, 10),
+                          },
+                        });
+                        await Promise.all([
+                          queryClient.invalidateQueries({
+                            queryKey: getListAppliedChangesQueryKey(),
+                          }),
+                          queryClient.invalidateQueries({
+                            queryKey: getListOptimizationReportsQueryKey(),
+                          }),
+                        ]);
+                        toast({
+                          title: "Mudança registrada",
+                          description: `"${selected.title}" será incluída no próximo relatório.`,
+                        });
+                        setSelected(null);
+                      } catch (err) {
+                        toast({
+                          title: "Falha ao registrar",
+                          description: err instanceof Error ? err.message : String(err),
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    {createApplied.isPending ? "Registrando…" : "Marcar como aplicada"}
                   </Button>
                 </div>
               </div>

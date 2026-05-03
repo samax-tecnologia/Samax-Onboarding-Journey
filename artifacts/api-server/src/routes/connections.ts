@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
 import { getTenant } from "../lib/req-tenant.js";
-import { db, providerConnectionsTable } from "@workspace/db";
+import { db, providerConnectionsTable, baselinesTable } from "@workspace/db";
 import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { runSync } from "../lib/sync";
 import { getAdapter } from "../lib/adapters";
 import { liveHasData } from "../lib/focus-live";
+import { loadDataset } from "../lib/focus-aggregate";
+import { buildBaselineMetrics } from "../lib/report-compute";
+import type { Logger } from "pino";
 
 const router: IRouter = Router();
 
@@ -114,7 +117,7 @@ router.delete("/connections/:id", async (req, res) => {
 });
 
 router.post("/connections/:id/sync", async (req, res) => {
-  const { tenantId } = getTenant(req);
+  const { tenantId, tenantDataSource } = getTenant(req);
   const { id } = req.params;
   const [conn] = await db
     .select()
@@ -126,7 +129,59 @@ router.post("/connections/:id/sync", async (req, res) => {
     return;
   }
   const result = await runSync(conn, { trigger: "manual" });
+  // Best-effort: ensure an active baseline exists once the tenant has any
+  // synced data. This makes the onboarding "Conectar" step automatically yield
+  // a baseline, so the next report generated has a meaningful comparison.
+  await ensureInitialBaseline(tenantId, tenantDataSource, req.log).catch(() => undefined);
   res.json(result);
 });
+
+// Auto-create a "first-light" baseline the first time the tenant has billing
+// data. Uses the most recent up-to-3-month window in the dataset.
+async function ensureInitialBaseline(
+  tenantId: string,
+  tenantDataSource: "mock" | "live",
+  log: Logger,
+): Promise<void> {
+  const existing = await db
+    .select({ id: baselinesTable.id })
+    .from(baselinesTable)
+    .where(eq(baselinesTable.tenantId, tenantId))
+    .limit(1);
+  if (existing.length > 0) return;
+
+  const ds = await loadDataset(tenantId, tenantDataSource);
+  if (ds.monthlyRows.length === 0) return;
+
+  const end = new Date(Date.UTC(ds.endDate.getUTCFullYear(), ds.endDate.getUTCMonth() + 1, 1));
+  const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 3, 1));
+  const m = buildBaselineMetrics(ds, start, end, "EffectiveCost");
+  if (m.totalCost <= 0) return;
+
+  await db
+    .update(baselinesTable)
+    .set({ isActive: "false" })
+    .where(eq(baselinesTable.tenantId, tenantId));
+  await db.insert(baselinesTable).values({
+    tenantId,
+    label: "Baseline inicial (auto)",
+    periodStart: start,
+    periodEnd: end,
+    costType: "EffectiveCost",
+    totalCost: m.totalCost,
+    metrics: {
+      monthlyAvg: m.monthlyAvg,
+      months: m.months,
+      byService: m.byService,
+      byCategory: m.byCategory,
+      byProvider: m.byProvider,
+      byTeam: m.byTeam,
+      byProduct: m.byProduct,
+    },
+    source: "auto",
+    isActive: "true",
+  });
+  log.info({ tenantId, start, end }, "Auto-created initial baseline after first sync");
+}
 
 export default router;

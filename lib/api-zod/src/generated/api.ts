@@ -339,6 +339,374 @@ export const GetFocusSavingsResponse = zod.object({
 });
 
 /**
+ * @summary List baselines for a tenant
+ */
+export const ListBaselinesParams = zod.object({
+  tenantId: zod.coerce.string(),
+});
+
+export const ListBaselinesResponseItem = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  label: zod.string(),
+  periodStart: zod.string().describe("ISO date (inclusive)"),
+  periodEnd: zod.string().describe("ISO date (exclusive)"),
+  costType: zod.string(),
+  currency: zod.string(),
+  totalCost: zod.number(),
+  monthlyAvg: zod.number(),
+  months: zod.number(),
+  source: zod.string().describe("auto | manual"),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+  byService: zod.record(zod.string(), zod.number()),
+  byCategory: zod.record(zod.string(), zod.number()),
+  byProvider: zod.record(zod.string(), zod.number()),
+  byTeam: zod.record(zod.string(), zod.number()),
+  byProduct: zod.record(zod.string(), zod.number()),
+});
+export const ListBaselinesResponse = zod.array(ListBaselinesResponseItem);
+
+/**
+ * @summary Create a baseline from a period
+ */
+export const CreateBaselineParams = zod.object({
+  tenantId: zod.coerce.string(),
+});
+
+export const CreateBaselineBody = zod.object({
+  label: zod.string(),
+  periodStart: zod.string().describe("ISO date (YYYY-MM-DD), inclusive"),
+  periodEnd: zod.string().describe("ISO date (YYYY-MM-DD), exclusive"),
+  costType: zod.enum(["BilledCost", "EffectiveCost"]).optional(),
+  source: zod.enum(["auto", "manual"]).optional(),
+  setActive: zod
+    .boolean()
+    .optional()
+    .describe(
+      "If true (default), mark this baseline as the active one for the tenant",
+    ),
+});
+
+/**
+ * @summary List applied changes for the current tenant
+ */
+export const ListAppliedChangesResponseItem = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  opportunityId: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  scopeProvider: zod.string().nullish(),
+  scopeService: zod.string().nullish(),
+  scopeCategory: zod.string().nullish(),
+  scopeTeam: zod.string().nullish(),
+  scopeProduct: zod.string().nullish(),
+  scopeResourceId: zod.string().nullish(),
+  appliedAt: zod.string(),
+  author: zod.string().nullish(),
+  estimatedMonthlySavings: zod.number(),
+  realizedMonthlySavingsOverride: zod.number().nullish(),
+  status: zod.string().describe("active | reverted"),
+  createdAt: zod.string(),
+});
+export const ListAppliedChangesResponse = zod.array(
+  ListAppliedChangesResponseItem,
+);
+
+/**
+ * @summary Record a new applied change (typically from an opportunity)
+ */
+export const CreateAppliedChangeBody = zod.object({
+  opportunityId: zod.string().optional(),
+  title: zod.string(),
+  description: zod.string().optional(),
+  scopeProvider: zod.string().optional(),
+  scopeService: zod.string().optional(),
+  scopeCategory: zod.string().optional(),
+  scopeTeam: zod.string().optional(),
+  scopeProduct: zod.string().optional(),
+  scopeResourceId: zod.string().optional(),
+  appliedAt: zod.string(),
+  author: zod.string().optional(),
+  estimatedMonthlySavings: zod.number(),
+  realizedMonthlySavingsOverride: zod.number().optional(),
+});
+
+/**
+ * @summary Update an applied change (e.g. realized savings override)
+ */
+export const UpdateAppliedChangeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateAppliedChangeBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  appliedAt: zod.string().optional(),
+  author: zod.string().optional(),
+  estimatedMonthlySavings: zod.number().optional(),
+  realizedMonthlySavingsOverride: zod.number().nullish(),
+  status: zod.enum(["active", "reverted"]).optional(),
+});
+
+export const UpdateAppliedChangeResponse = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  opportunityId: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  scopeProvider: zod.string().nullish(),
+  scopeService: zod.string().nullish(),
+  scopeCategory: zod.string().nullish(),
+  scopeTeam: zod.string().nullish(),
+  scopeProduct: zod.string().nullish(),
+  scopeResourceId: zod.string().nullish(),
+  appliedAt: zod.string(),
+  author: zod.string().nullish(),
+  estimatedMonthlySavings: zod.number(),
+  realizedMonthlySavingsOverride: zod.number().nullish(),
+  status: zod.string().describe("active | reverted"),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete an applied change
+ */
+export const DeleteAppliedChangeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List optimization reports for the current tenant
+ */
+export const ListOptimizationReportsResponseItem = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  title: zod.string(),
+  periodStart: zod.string(),
+  periodEnd: zod.string(),
+  baselineId: zod.string().nullish(),
+  baselineLabel: zod.string().nullish(),
+  author: zod.string().nullish(),
+  currency: zod.string(),
+  totalCost: zod.number(),
+  baselineProjectedCost: zod.number(),
+  realizedSavings: zod.number(),
+  appliedChangesCount: zod.number(),
+  pdfUrl: zod.string().optional(),
+  createdAt: zod.string(),
+});
+export const ListOptimizationReportsResponse = zod.array(
+  ListOptimizationReportsResponseItem,
+);
+
+/**
+ * @summary Generate and persist a new optimization report
+ */
+export const CreateOptimizationReportBody = zod.object({
+  title: zod.string(),
+  periodStart: zod.string().describe("ISO date (YYYY-MM-DD), inclusive"),
+  periodEnd: zod.string().describe("ISO date (YYYY-MM-DD), exclusive"),
+  baselineId: zod
+    .string()
+    .optional()
+    .describe("If omitted, the active baseline (or most recent) is used."),
+  costType: zod.enum(["BilledCost", "EffectiveCost"]).optional(),
+  author: zod.string().optional(),
+});
+
+/**
+ * @summary Retrieve a generated optimization report (frozen snapshot)
+ */
+export const GetOptimizationReportParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetOptimizationReportResponse = zod
+  .object({
+    id: zod.string(),
+    tenantId: zod.string(),
+    title: zod.string(),
+    periodStart: zod.string(),
+    periodEnd: zod.string(),
+    baselineId: zod.string().nullish(),
+    baselineLabel: zod.string().nullish(),
+    author: zod.string().nullish(),
+    currency: zod.string(),
+    totalCost: zod.number(),
+    baselineProjectedCost: zod.number(),
+    realizedSavings: zod.number(),
+    appliedChangesCount: zod.number(),
+    pdfUrl: zod.string().optional(),
+    createdAt: zod.string(),
+  })
+  .and(
+    zod.object({
+      sections: zod.object({
+        timeSeries: zod.array(
+          zod.object({
+            month: zod.string(),
+            actual: zod.number(),
+            projectedNoOptimization: zod.number(),
+          }),
+        ),
+        efficiency: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            value: zod.number(),
+            unit: zod.string(),
+            baselineValue: zod.number().nullable(),
+            delta: zod.number().nullable(),
+            hint: zod.string(),
+          }),
+        ),
+        executiveSummary: zod.object({
+          periodLabel: zod.string(),
+          baselineLabel: zod.string(),
+          totalCost: zod.number(),
+          baselineProjectedCost: zod.number(),
+          realizedSavings: zod.number(),
+          savingsPercent: zod.number(),
+          appliedChangesCount: zod.number(),
+          openOpportunitiesCount: zod.number(),
+          openOpportunitiesMonthlySavings: zod.number(),
+          topWinsLabel: zod.string().nullable(),
+        }),
+        topWins: zod.array(
+          zod.object({
+            id: zod.string(),
+            title: zod.string(),
+            realizedMonthlySavings: zod.number(),
+            realizedPeriodSavings: zod.number(),
+            scope: zod.string().nullable(),
+          }),
+        ),
+        byCategory: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            current: zod.number(),
+            baseline: zod.number(),
+            delta: zod.number(),
+            deltaPct: zod.number(),
+          }),
+        ),
+        byProvider: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            current: zod.number(),
+            baseline: zod.number(),
+            delta: zod.number(),
+            deltaPct: zod.number(),
+          }),
+        ),
+        byService: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            current: zod.number(),
+            baseline: zod.number(),
+            delta: zod.number(),
+            deltaPct: zod.number(),
+          }),
+        ),
+        byTeam: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            current: zod.number(),
+            baseline: zod.number(),
+            delta: zod.number(),
+            deltaPct: zod.number(),
+          }),
+        ),
+        byProduct: zod.array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            current: zod.number(),
+            baseline: zod.number(),
+            delta: zod.number(),
+            deltaPct: zod.number(),
+          }),
+        ),
+        appliedChanges: zod.array(
+          zod.object({
+            id: zod.string(),
+            title: zod.string(),
+            status: zod.string().describe("active | reverted"),
+            opportunityId: zod.string().nullish(),
+            appliedAt: zod.string(),
+            author: zod.string().nullish(),
+            estimatedMonthlySavings: zod.number(),
+            realizedMonthlySavings: zod.number(),
+            realizedPeriodSavings: zod.number(),
+            activeMonths: zod.number(),
+            scopeProvider: zod.string().nullish(),
+            scopeService: zod.string().nullish(),
+            scopeCategory: zod.string().nullish(),
+          }),
+        ),
+        openOpportunities: zod.array(
+          zod.object({
+            id: zod.string(),
+            title: zod.string(),
+            category: zod.string(),
+            provider: zod.string(),
+            service: zod.string(),
+            monthlySavings: zod.number(),
+            effort: zod.string(),
+            team: zod.string().optional(),
+            product: zod.string().optional(),
+          }),
+        ),
+        baselineSnapshot: zod.object({
+          periodStart: zod.string(),
+          periodEnd: zod.string(),
+          totalCost: zod.number(),
+          monthlyAvg: zod.number(),
+          months: zod.number(),
+        }),
+      }),
+    }),
+  );
+
+/**
+ * @summary Delete a stored optimization report
+ */
+export const DeleteOptimizationReportParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary Latest optimization report summary for a tenant (or 204 if none)
+ */
+export const GetLatestOptimizationReportParams = zod.object({
+  tenantId: zod.coerce.string(),
+});
+
+export const GetLatestOptimizationReportResponse = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  title: zod.string(),
+  periodStart: zod.string(),
+  periodEnd: zod.string(),
+  baselineId: zod.string().nullish(),
+  baselineLabel: zod.string().nullish(),
+  author: zod.string().nullish(),
+  currency: zod.string(),
+  totalCost: zod.number(),
+  baselineProjectedCost: zod.number(),
+  realizedSavings: zod.number(),
+  appliedChangesCount: zod.number(),
+  pdfUrl: zod.string().optional(),
+  createdAt: zod.string(),
+});
+
+/**
  * Lightweight aggregate used by the onboarding app to know whether a connection already exists, and by the dashboard to show onboarding status.
  * @summary Cross-app onboarding summary for a tenant
  */

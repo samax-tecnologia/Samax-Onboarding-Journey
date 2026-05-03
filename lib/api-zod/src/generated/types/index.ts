@@ -6,6 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./appliedChange";
+export * from "./appliedChangeInput";
+export * from "./appliedChangeUpdate";
+export * from "./appliedChangeUpdateStatus";
+export * from "./baseline";
+export * from "./baselineByCategory";
+export * from "./baselineByProduct";
+export * from "./baselineByProvider";
+export * from "./baselineByService";
+export * from "./baselineByTeam";
+export * from "./baselineInput";
+export * from "./baselineInputCostType";
+export * from "./baselineInputSource";
 export * from "./breakdownItem";
 export * from "./breakdownItemMeta";
 export * from "./connection";
@@ -34,8 +47,21 @@ export * from "./getFocusTimeSeriesParams";
 export * from "./healthStatus";
 export * from "./onboardingSummary";
 export * from "./onboardingSummaryCurrentStage";
+export * from "./optimizationReport";
+export * from "./optimizationReportInput";
+export * from "./optimizationReportInputCostType";
+export * from "./optimizationReportSections";
+export * from "./optimizationReportSectionsBaselineSnapshot";
+export * from "./optimizationReportSectionsExecutiveSummary";
+export * from "./optimizationReportSummary";
 export * from "./productsParamParameter";
 export * from "./providersParamParameter";
+export * from "./reportAppliedChange";
+export * from "./reportComparisonRow";
+export * from "./reportEfficiencyMetric";
+export * from "./reportOpportunity";
+export * from "./reportTimeSeriesPoint";
+export * from "./reportTopWin";
 export * from "./savingOpportunity";
 export * from "./savingOpportunityEffort";
 export * from "./startDateParamParameter";

@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import focusRouter from "./focus";
 import connectionsRouter from "./connections";
 import tenantsRouter from "./tenants";
+import reportsRouter from "./reports";
 import { resolveTenant } from "../middlewares/tenant";
 
 const router: IRouter = Router();
@@ -16,5 +17,6 @@ router.use(resolveTenant);
 router.use(tenantsRouter);
 router.use(focusRouter);
 router.use(connectionsRouter);
+router.use(reportsRouter);
 
 export default router;

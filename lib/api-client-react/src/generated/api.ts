@@ -17,6 +17,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AppliedChange,
+  AppliedChangeInput,
+  AppliedChangeUpdate,
+  Baseline,
+  BaselineInput,
   Connection,
   ConnectionInput,
   ConnectionList,
@@ -31,6 +36,9 @@ import type {
   GetFocusTimeSeriesParams,
   HealthStatus,
   OnboardingSummary,
+  OptimizationReport,
+  OptimizationReportInput,
+  OptimizationReportSummary,
   SyncResult,
 } from "./api.schemas";
 
@@ -897,6 +905,945 @@ export function useGetFocusSavings<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetFocusSavingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List baselines for a tenant
+ */
+export const getListBaselinesUrl = (tenantId: string) => {
+  return `/api/tenants/${tenantId}/baselines`;
+};
+
+export const listBaselines = async (
+  tenantId: string,
+  options?: RequestInit,
+): Promise<Baseline[]> => {
+  return customFetch<Baseline[]>(getListBaselinesUrl(tenantId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListBaselinesQueryKey = (tenantId: string) => {
+  return [`/api/tenants/${tenantId}/baselines`] as const;
+};
+
+export const getListBaselinesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBaselines>>,
+  TError = ErrorType<unknown>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listBaselines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBaselinesQueryKey(tenantId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBaselines>>> = ({
+    signal,
+  }) => listBaselines(tenantId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!tenantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBaselines>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListBaselinesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listBaselines>>
+>;
+export type ListBaselinesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List baselines for a tenant
+ */
+
+export function useListBaselines<
+  TData = Awaited<ReturnType<typeof listBaselines>>,
+  TError = ErrorType<unknown>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listBaselines>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBaselinesQueryOptions(tenantId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a baseline from a period
+ */
+export const getCreateBaselineUrl = (tenantId: string) => {
+  return `/api/tenants/${tenantId}/baselines`;
+};
+
+export const createBaseline = async (
+  tenantId: string,
+  baselineInput: BaselineInput,
+  options?: RequestInit,
+): Promise<Baseline> => {
+  return customFetch<Baseline>(getCreateBaselineUrl(tenantId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(baselineInput),
+  });
+};
+
+export const getCreateBaselineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBaseline>>,
+    TError,
+    { tenantId: string; data: BodyType<BaselineInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBaseline>>,
+  TError,
+  { tenantId: string; data: BodyType<BaselineInput> },
+  TContext
+> => {
+  const mutationKey = ["createBaseline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBaseline>>,
+    { tenantId: string; data: BodyType<BaselineInput> }
+  > = (props) => {
+    const { tenantId, data } = props ?? {};
+
+    return createBaseline(tenantId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBaselineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBaseline>>
+>;
+export type CreateBaselineMutationBody = BodyType<BaselineInput>;
+export type CreateBaselineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a baseline from a period
+ */
+export const useCreateBaseline = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBaseline>>,
+    TError,
+    { tenantId: string; data: BodyType<BaselineInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBaseline>>,
+  TError,
+  { tenantId: string; data: BodyType<BaselineInput> },
+  TContext
+> => {
+  return useMutation(getCreateBaselineMutationOptions(options));
+};
+
+/**
+ * @summary List applied changes for the current tenant
+ */
+export const getListAppliedChangesUrl = () => {
+  return `/api/applied-changes`;
+};
+
+export const listAppliedChanges = async (
+  options?: RequestInit,
+): Promise<AppliedChange[]> => {
+  return customFetch<AppliedChange[]>(getListAppliedChangesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAppliedChangesQueryKey = () => {
+  return [`/api/applied-changes`] as const;
+};
+
+export const getListAppliedChangesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAppliedChanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAppliedChanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAppliedChangesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAppliedChanges>>
+  > = ({ signal }) => listAppliedChanges({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAppliedChanges>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAppliedChangesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAppliedChanges>>
+>;
+export type ListAppliedChangesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List applied changes for the current tenant
+ */
+
+export function useListAppliedChanges<
+  TData = Awaited<ReturnType<typeof listAppliedChanges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAppliedChanges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAppliedChangesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record a new applied change (typically from an opportunity)
+ */
+export const getCreateAppliedChangeUrl = () => {
+  return `/api/applied-changes`;
+};
+
+export const createAppliedChange = async (
+  appliedChangeInput: AppliedChangeInput,
+  options?: RequestInit,
+): Promise<AppliedChange> => {
+  return customFetch<AppliedChange>(getCreateAppliedChangeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(appliedChangeInput),
+  });
+};
+
+export const getCreateAppliedChangeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAppliedChange>>,
+    TError,
+    { data: BodyType<AppliedChangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAppliedChange>>,
+  TError,
+  { data: BodyType<AppliedChangeInput> },
+  TContext
+> => {
+  const mutationKey = ["createAppliedChange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAppliedChange>>,
+    { data: BodyType<AppliedChangeInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAppliedChange(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAppliedChangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAppliedChange>>
+>;
+export type CreateAppliedChangeMutationBody = BodyType<AppliedChangeInput>;
+export type CreateAppliedChangeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Record a new applied change (typically from an opportunity)
+ */
+export const useCreateAppliedChange = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAppliedChange>>,
+    TError,
+    { data: BodyType<AppliedChangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAppliedChange>>,
+  TError,
+  { data: BodyType<AppliedChangeInput> },
+  TContext
+> => {
+  return useMutation(getCreateAppliedChangeMutationOptions(options));
+};
+
+/**
+ * @summary Update an applied change (e.g. realized savings override)
+ */
+export const getUpdateAppliedChangeUrl = (id: string) => {
+  return `/api/applied-changes/${id}`;
+};
+
+export const updateAppliedChange = async (
+  id: string,
+  appliedChangeUpdate: AppliedChangeUpdate,
+  options?: RequestInit,
+): Promise<AppliedChange> => {
+  return customFetch<AppliedChange>(getUpdateAppliedChangeUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(appliedChangeUpdate),
+  });
+};
+
+export const getUpdateAppliedChangeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAppliedChange>>,
+    TError,
+    { id: string; data: BodyType<AppliedChangeUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAppliedChange>>,
+  TError,
+  { id: string; data: BodyType<AppliedChangeUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAppliedChange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAppliedChange>>,
+    { id: string; data: BodyType<AppliedChangeUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateAppliedChange(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAppliedChangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAppliedChange>>
+>;
+export type UpdateAppliedChangeMutationBody = BodyType<AppliedChangeUpdate>;
+export type UpdateAppliedChangeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an applied change (e.g. realized savings override)
+ */
+export const useUpdateAppliedChange = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAppliedChange>>,
+    TError,
+    { id: string; data: BodyType<AppliedChangeUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAppliedChange>>,
+  TError,
+  { id: string; data: BodyType<AppliedChangeUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAppliedChangeMutationOptions(options));
+};
+
+/**
+ * @summary Delete an applied change
+ */
+export const getDeleteAppliedChangeUrl = (id: string) => {
+  return `/api/applied-changes/${id}`;
+};
+
+export const deleteAppliedChange = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAppliedChangeUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAppliedChangeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAppliedChange>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAppliedChange>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteAppliedChange"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAppliedChange>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAppliedChange(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAppliedChangeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAppliedChange>>
+>;
+
+export type DeleteAppliedChangeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an applied change
+ */
+export const useDeleteAppliedChange = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAppliedChange>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAppliedChange>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAppliedChangeMutationOptions(options));
+};
+
+/**
+ * @summary List optimization reports for the current tenant
+ */
+export const getListOptimizationReportsUrl = () => {
+  return `/api/optimization-reports`;
+};
+
+export const listOptimizationReports = async (
+  options?: RequestInit,
+): Promise<OptimizationReportSummary[]> => {
+  return customFetch<OptimizationReportSummary[]>(
+    getListOptimizationReportsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListOptimizationReportsQueryKey = () => {
+  return [`/api/optimization-reports`] as const;
+};
+
+export const getListOptimizationReportsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOptimizationReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOptimizationReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListOptimizationReportsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listOptimizationReports>>
+  > = ({ signal }) => listOptimizationReports({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOptimizationReports>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOptimizationReportsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOptimizationReports>>
+>;
+export type ListOptimizationReportsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List optimization reports for the current tenant
+ */
+
+export function useListOptimizationReports<
+  TData = Awaited<ReturnType<typeof listOptimizationReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listOptimizationReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOptimizationReportsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate and persist a new optimization report
+ */
+export const getCreateOptimizationReportUrl = () => {
+  return `/api/optimization-reports`;
+};
+
+export const createOptimizationReport = async (
+  optimizationReportInput: OptimizationReportInput,
+  options?: RequestInit,
+): Promise<OptimizationReport> => {
+  return customFetch<OptimizationReport>(getCreateOptimizationReportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(optimizationReportInput),
+  });
+};
+
+export const getCreateOptimizationReportMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOptimizationReport>>,
+    TError,
+    { data: BodyType<OptimizationReportInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOptimizationReport>>,
+  TError,
+  { data: BodyType<OptimizationReportInput> },
+  TContext
+> => {
+  const mutationKey = ["createOptimizationReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOptimizationReport>>,
+    { data: BodyType<OptimizationReportInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOptimizationReport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOptimizationReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOptimizationReport>>
+>;
+export type CreateOptimizationReportMutationBody =
+  BodyType<OptimizationReportInput>;
+export type CreateOptimizationReportMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate and persist a new optimization report
+ */
+export const useCreateOptimizationReport = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOptimizationReport>>,
+    TError,
+    { data: BodyType<OptimizationReportInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOptimizationReport>>,
+  TError,
+  { data: BodyType<OptimizationReportInput> },
+  TContext
+> => {
+  return useMutation(getCreateOptimizationReportMutationOptions(options));
+};
+
+/**
+ * @summary Retrieve a generated optimization report (frozen snapshot)
+ */
+export const getGetOptimizationReportUrl = (id: string) => {
+  return `/api/optimization-reports/${id}`;
+};
+
+export const getOptimizationReport = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OptimizationReport> => {
+  return customFetch<OptimizationReport>(getGetOptimizationReportUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOptimizationReportQueryKey = (id: string) => {
+  return [`/api/optimization-reports/${id}`] as const;
+};
+
+export const getGetOptimizationReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOptimizationReport>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOptimizationReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOptimizationReportQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOptimizationReport>>
+  > = ({ signal }) => getOptimizationReport(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOptimizationReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOptimizationReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOptimizationReport>>
+>;
+export type GetOptimizationReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Retrieve a generated optimization report (frozen snapshot)
+ */
+
+export function useGetOptimizationReport<
+  TData = Awaited<ReturnType<typeof getOptimizationReport>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOptimizationReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOptimizationReportQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a stored optimization report
+ */
+export const getDeleteOptimizationReportUrl = (id: string) => {
+  return `/api/optimization-reports/${id}`;
+};
+
+export const deleteOptimizationReport = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteOptimizationReportUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOptimizationReportMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOptimizationReport>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOptimizationReport>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteOptimizationReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOptimizationReport>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteOptimizationReport(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOptimizationReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOptimizationReport>>
+>;
+
+export type DeleteOptimizationReportMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a stored optimization report
+ */
+export const useDeleteOptimizationReport = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOptimizationReport>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOptimizationReport>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteOptimizationReportMutationOptions(options));
+};
+
+/**
+ * @summary Latest optimization report summary for a tenant (or 204 if none)
+ */
+export const getGetLatestOptimizationReportUrl = (tenantId: string) => {
+  return `/api/tenants/${tenantId}/latest-optimization-report`;
+};
+
+export const getLatestOptimizationReport = async (
+  tenantId: string,
+  options?: RequestInit,
+): Promise<OptimizationReportSummary | void> => {
+  return customFetch<OptimizationReportSummary | void>(
+    getGetLatestOptimizationReportUrl(tenantId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetLatestOptimizationReportQueryKey = (tenantId: string) => {
+  return [`/api/tenants/${tenantId}/latest-optimization-report`] as const;
+};
+
+export const getGetLatestOptimizationReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLatestOptimizationReport>>,
+  TError = ErrorType<unknown>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestOptimizationReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLatestOptimizationReportQueryKey(tenantId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLatestOptimizationReport>>
+  > = ({ signal }) =>
+    getLatestOptimizationReport(tenantId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!tenantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLatestOptimizationReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLatestOptimizationReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLatestOptimizationReport>>
+>;
+export type GetLatestOptimizationReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Latest optimization report summary for a tenant (or 204 if none)
+ */
+
+export function useGetLatestOptimizationReport<
+  TData = Awaited<ReturnType<typeof getLatestOptimizationReport>>,
+  TError = ErrorType<unknown>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestOptimizationReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLatestOptimizationReportQueryOptions(
+    tenantId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

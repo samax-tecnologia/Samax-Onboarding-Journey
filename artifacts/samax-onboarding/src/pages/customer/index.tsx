@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGetOnboardingSummary } from "@workspace/api-client-react";
+import { useGetOnboardingSummary, useGetLatestOptimizationReport } from "@workspace/api-client-react";
 import { useTenant } from "@/lib/tenant-store";
 import {
   ArrowRight,
   Check,
+  FileText,
+  ExternalLink,
   ChevronDown,
   CalendarDays,
   Search,
@@ -904,6 +906,75 @@ function MethodologyReveal() {
 }
 
 // =============================================================================
+// Latest optimization report card
+// =============================================================================
+function formatUSD(n: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
+function LatestReportCard() {
+  const { tenantId } = useTenant();
+  const { data } = useGetLatestOptimizationReport(tenantId);
+  if (!data) return null;
+  const savings = data.baselineProjectedCost - data.totalCost;
+  const savingsPct = data.baselineProjectedCost > 0 ? savings / data.baselineProjectedCost : 0;
+  const positive = savings >= 0;
+  const dashboardHref = `/dashboard/relatorios?tenant=${encodeURIComponent(tenantId)}`;
+  const basePdfPath = data.pdfUrl ?? `/api/optimization-reports/${data.id}/pdf`;
+  // Browser navigation can't send our custom x-samax-tenant header, so encode
+  // the tenant as a query param (server middleware accepts `?tenant=`).
+  const pdfHref = `${basePdfPath}${basePdfPath.includes("?") ? "&" : "?"}tenant=${encodeURIComponent(tenantId)}`;
+  const periodLabel = `${new Date(data.periodStart).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })} → ${new Date(data.periodEnd).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })}`;
+  return (
+    <Card className="mb-8 border-primary/30 shadow-sm" data-testid="latest-report-card">
+      <CardContent className="p-5 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="w-11 h-11 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wider text-primary font-semibold mb-0.5">
+                Último relatório de otimização
+              </p>
+              <h3 className="text-lg font-semibold tracking-tight truncate">{data.title}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Período {periodLabel} · gerado em {new Date(data.createdAt).toLocaleDateString("pt-BR")}
+                {data.baselineLabel ? ` · vs ${data.baselineLabel}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Custo no período</p>
+              <p className="text-base font-semibold tabular-nums">{formatUSD(data.totalCost)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Δ vs baseline</p>
+              <p className={cn("text-base font-semibold tabular-nums", positive ? "text-emerald-600" : "text-red-600")}>
+                {positive ? "−" : "+"}{formatUSD(Math.abs(savings))} ({(Math.abs(savingsPct) * 100).toFixed(1)}%)
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <a href={pdfHref} target="_blank" rel="noopener" data-testid="latest-report-pdf">
+                  Baixar PDF <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </Button>
+              <Button size="sm" variant="ghost" className="gap-1.5" asChild>
+                <a href={dashboardHref} target="_blank" rel="noopener" data-testid="latest-report-link">
+                  Ver no painel <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
 // Page
 // =============================================================================
 export default function CustomerPage() {
@@ -917,6 +988,7 @@ export default function CustomerPage() {
       <PreContractRecap />
       <EnvironmentSignals />
       <GoalTracker />
+      <LatestReportCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2">

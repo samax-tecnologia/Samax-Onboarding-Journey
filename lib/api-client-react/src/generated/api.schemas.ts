@@ -233,6 +233,286 @@ export interface OnboardingSummary {
   currentStage: OnboardingSummaryCurrentStage;
 }
 
+export type BaselineByService = { [key: string]: number };
+
+export type BaselineByCategory = { [key: string]: number };
+
+export type BaselineByProvider = { [key: string]: number };
+
+export type BaselineByTeam = { [key: string]: number };
+
+export type BaselineByProduct = { [key: string]: number };
+
+export interface Baseline {
+  id: string;
+  tenantId: string;
+  label: string;
+  /** ISO date (inclusive) */
+  periodStart: string;
+  /** ISO date (exclusive) */
+  periodEnd: string;
+  costType: string;
+  currency: string;
+  totalCost: number;
+  monthlyAvg: number;
+  months: number;
+  /** auto | manual */
+  source: string;
+  isActive: boolean;
+  createdAt: string;
+  byService: BaselineByService;
+  byCategory: BaselineByCategory;
+  byProvider: BaselineByProvider;
+  byTeam: BaselineByTeam;
+  byProduct: BaselineByProduct;
+}
+
+export type BaselineInputCostType =
+  (typeof BaselineInputCostType)[keyof typeof BaselineInputCostType];
+
+export const BaselineInputCostType = {
+  BilledCost: "BilledCost",
+  EffectiveCost: "EffectiveCost",
+} as const;
+
+export type BaselineInputSource =
+  (typeof BaselineInputSource)[keyof typeof BaselineInputSource];
+
+export const BaselineInputSource = {
+  auto: "auto",
+  manual: "manual",
+} as const;
+
+export interface BaselineInput {
+  label: string;
+  /** ISO date (YYYY-MM-DD), inclusive */
+  periodStart: string;
+  /** ISO date (YYYY-MM-DD), exclusive */
+  periodEnd: string;
+  costType?: BaselineInputCostType;
+  source?: BaselineInputSource;
+  /** If true (default), mark this baseline as the active one for the tenant */
+  setActive?: boolean;
+}
+
+export interface AppliedChange {
+  id: string;
+  tenantId: string;
+  /** @nullable */
+  opportunityId?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  scopeProvider?: string | null;
+  /** @nullable */
+  scopeService?: string | null;
+  /** @nullable */
+  scopeCategory?: string | null;
+  /** @nullable */
+  scopeTeam?: string | null;
+  /** @nullable */
+  scopeProduct?: string | null;
+  /** @nullable */
+  scopeResourceId?: string | null;
+  appliedAt: string;
+  /** @nullable */
+  author?: string | null;
+  estimatedMonthlySavings: number;
+  /** @nullable */
+  realizedMonthlySavingsOverride?: number | null;
+  /** active | reverted */
+  status: string;
+  createdAt: string;
+}
+
+export interface AppliedChangeInput {
+  opportunityId?: string;
+  title: string;
+  description?: string;
+  scopeProvider?: string;
+  scopeService?: string;
+  scopeCategory?: string;
+  scopeTeam?: string;
+  scopeProduct?: string;
+  scopeResourceId?: string;
+  appliedAt: string;
+  author?: string;
+  estimatedMonthlySavings: number;
+  realizedMonthlySavingsOverride?: number;
+}
+
+export type AppliedChangeUpdateStatus =
+  (typeof AppliedChangeUpdateStatus)[keyof typeof AppliedChangeUpdateStatus];
+
+export const AppliedChangeUpdateStatus = {
+  active: "active",
+  reverted: "reverted",
+} as const;
+
+export interface AppliedChangeUpdate {
+  title?: string;
+  description?: string;
+  appliedAt?: string;
+  author?: string;
+  estimatedMonthlySavings?: number;
+  /** @nullable */
+  realizedMonthlySavingsOverride?: number | null;
+  status?: AppliedChangeUpdateStatus;
+}
+
+export type OptimizationReportInputCostType =
+  (typeof OptimizationReportInputCostType)[keyof typeof OptimizationReportInputCostType];
+
+export const OptimizationReportInputCostType = {
+  BilledCost: "BilledCost",
+  EffectiveCost: "EffectiveCost",
+} as const;
+
+export interface OptimizationReportInput {
+  title: string;
+  /** ISO date (YYYY-MM-DD), inclusive */
+  periodStart: string;
+  /** ISO date (YYYY-MM-DD), exclusive */
+  periodEnd: string;
+  /** If omitted, the active baseline (or most recent) is used. */
+  baselineId?: string;
+  costType?: OptimizationReportInputCostType;
+  author?: string;
+}
+
+export interface OptimizationReportSummary {
+  id: string;
+  tenantId: string;
+  title: string;
+  periodStart: string;
+  periodEnd: string;
+  /** @nullable */
+  baselineId?: string | null;
+  /** @nullable */
+  baselineLabel?: string | null;
+  /** @nullable */
+  author?: string | null;
+  currency: string;
+  totalCost: number;
+  baselineProjectedCost: number;
+  realizedSavings: number;
+  appliedChangesCount: number;
+  pdfUrl?: string;
+  createdAt: string;
+}
+
+export type OptimizationReportSectionsExecutiveSummary = {
+  periodLabel: string;
+  baselineLabel: string;
+  totalCost: number;
+  baselineProjectedCost: number;
+  realizedSavings: number;
+  savingsPercent: number;
+  appliedChangesCount: number;
+  openOpportunitiesCount: number;
+  openOpportunitiesMonthlySavings: number;
+  /** @nullable */
+  topWinsLabel: string | null;
+};
+
+export type OptimizationReportSectionsBaselineSnapshot = {
+  periodStart: string;
+  periodEnd: string;
+  totalCost: number;
+  monthlyAvg: number;
+  months: number;
+};
+
+export interface ReportTimeSeriesPoint {
+  month: string;
+  actual: number;
+  projectedNoOptimization: number;
+}
+
+export interface ReportEfficiencyMetric {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  /** @nullable */
+  baselineValue: number | null;
+  /** @nullable */
+  delta: number | null;
+  hint: string;
+}
+
+export interface ReportTopWin {
+  id: string;
+  title: string;
+  realizedMonthlySavings: number;
+  realizedPeriodSavings: number;
+  /** @nullable */
+  scope: string | null;
+}
+
+export interface ReportComparisonRow {
+  key: string;
+  label: string;
+  current: number;
+  baseline: number;
+  delta: number;
+  deltaPct: number;
+}
+
+export interface ReportAppliedChange {
+  id: string;
+  title: string;
+  /** active | reverted */
+  status: string;
+  /** @nullable */
+  opportunityId?: string | null;
+  appliedAt: string;
+  /** @nullable */
+  author?: string | null;
+  estimatedMonthlySavings: number;
+  realizedMonthlySavings: number;
+  realizedPeriodSavings: number;
+  activeMonths: number;
+  /** @nullable */
+  scopeProvider?: string | null;
+  /** @nullable */
+  scopeService?: string | null;
+  /** @nullable */
+  scopeCategory?: string | null;
+}
+
+export interface ReportOpportunity {
+  id: string;
+  title: string;
+  category: string;
+  provider: string;
+  service: string;
+  monthlySavings: number;
+  effort: string;
+  team?: string;
+  product?: string;
+}
+
+export type OptimizationReportSections = {
+  timeSeries: ReportTimeSeriesPoint[];
+  efficiency: ReportEfficiencyMetric[];
+  executiveSummary: OptimizationReportSectionsExecutiveSummary;
+  topWins: ReportTopWin[];
+  byCategory: ReportComparisonRow[];
+  byProvider: ReportComparisonRow[];
+  byService: ReportComparisonRow[];
+  byTeam: ReportComparisonRow[];
+  byProduct: ReportComparisonRow[];
+  appliedChanges: ReportAppliedChange[];
+  openOpportunities: ReportOpportunity[];
+  baselineSnapshot: OptimizationReportSectionsBaselineSnapshot;
+};
+
+export type OptimizationReport = OptimizationReportSummary & {
+  sections: OptimizationReportSections;
+};
+
 /**
  * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
  */

@@ -208,6 +208,198 @@ paths:
               schema:
                 $ref: "#/components/schemas/FocusSavings"
 
+  /tenants/{tenantId}/baselines:
+    get:
+      operationId: listBaselines
+      tags: [reports]
+      summary: List baselines for a tenant
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Baselines
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Baseline"
+    post:
+      operationId: createBaseline
+      tags: [reports]
+      summary: Create a baseline from a period
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BaselineInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Baseline"
+
+  /applied-changes:
+    get:
+      operationId: listAppliedChanges
+      tags: [reports]
+      summary: List applied changes for the current tenant
+      responses:
+        "200":
+          description: Applied changes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppliedChange"
+    post:
+      operationId: createAppliedChange
+      tags: [reports]
+      summary: Record a new applied change (typically from an opportunity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppliedChangeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedChange"
+
+  /applied-changes/{id}:
+    patch:
+      operationId: updateAppliedChange
+      tags: [reports]
+      summary: Update an applied change (e.g. realized savings override)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppliedChangeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedChange"
+    delete:
+      operationId: deleteAppliedChange
+      tags: [reports]
+      summary: Delete an applied change
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /optimization-reports:
+    get:
+      operationId: listOptimizationReports
+      tags: [reports]
+      summary: List optimization reports for the current tenant
+      responses:
+        "200":
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OptimizationReportSummary"
+    post:
+      operationId: createOptimizationReport
+      tags: [reports]
+      summary: Generate and persist a new optimization report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OptimizationReportInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptimizationReport"
+
+  /optimization-reports/{id}:
+    get:
+      operationId: getOptimizationReport
+      tags: [reports]
+      summary: Retrieve a generated optimization report (frozen snapshot)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptimizationReport"
+    delete:
+      operationId: deleteOptimizationReport
+      tags: [reports]
+      summary: Delete a stored optimization report
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /tenants/{tenantId}/latest-optimization-report:
+    get:
+      operationId: getLatestOptimizationReport
+      tags: [reports]
+      summary: Latest optimization report summary for a tenant (or 204 if none)
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Latest report summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptimizationReportSummary"
+        "204":
+          description: No reports yet
+
   /tenants/{tenantId}/onboarding-summary:
     get:
       operationId: getOnboardingSummary
@@ -527,3 +719,359 @@ components:
           properties:
             number: { type: integer }
             title: { type: string }
+
+    Baseline:
+      type: object
+      required:
+        - id
+        - tenantId
+        - label
+        - periodStart
+        - periodEnd
+        - costType
+        - currency
+        - totalCost
+        - monthlyAvg
+        - months
+        - source
+        - isActive
+        - createdAt
+        - byService
+        - byCategory
+        - byProvider
+        - byTeam
+        - byProduct
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        label: { type: string }
+        periodStart: { type: string, description: "ISO date (inclusive)" }
+        periodEnd: { type: string, description: "ISO date (exclusive)" }
+        costType: { type: string }
+        currency: { type: string }
+        totalCost: { type: number }
+        monthlyAvg: { type: number }
+        months: { type: integer }
+        source: { type: string, description: "auto | manual" }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+        byService:
+          type: object
+          additionalProperties: { type: number }
+        byCategory:
+          type: object
+          additionalProperties: { type: number }
+        byProvider:
+          type: object
+          additionalProperties: { type: number }
+        byTeam:
+          type: object
+          additionalProperties: { type: number }
+        byProduct:
+          type: object
+          additionalProperties: { type: number }
+
+    BaselineInput:
+      type: object
+      required: [label, periodStart, periodEnd]
+      properties:
+        label: { type: string }
+        periodStart: { type: string, description: "ISO date (YYYY-MM-DD), inclusive" }
+        periodEnd: { type: string, description: "ISO date (YYYY-MM-DD), exclusive" }
+        costType:
+          type: string
+          enum: [BilledCost, EffectiveCost]
+        source:
+          type: string
+          enum: [auto, manual]
+        setActive:
+          type: boolean
+          description: "If true (default), mark this baseline as the active one for the tenant"
+
+    AppliedChange:
+      type: object
+      required:
+        - id
+        - tenantId
+        - title
+        - appliedAt
+        - estimatedMonthlySavings
+        - status
+        - createdAt
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        opportunityId:
+          type: ["string", "null"]
+        title: { type: string }
+        description:
+          type: ["string", "null"]
+        scopeProvider:
+          type: ["string", "null"]
+        scopeService:
+          type: ["string", "null"]
+        scopeCategory:
+          type: ["string", "null"]
+        scopeTeam:
+          type: ["string", "null"]
+        scopeProduct:
+          type: ["string", "null"]
+        scopeResourceId:
+          type: ["string", "null"]
+        appliedAt: { type: string }
+        author:
+          type: ["string", "null"]
+        estimatedMonthlySavings: { type: number }
+        realizedMonthlySavingsOverride:
+          type: ["number", "null"]
+        status: { type: string, description: "active | reverted" }
+        createdAt: { type: string }
+
+    AppliedChangeInput:
+      type: object
+      required: [title, appliedAt, estimatedMonthlySavings]
+      properties:
+        opportunityId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        scopeProvider: { type: string }
+        scopeService: { type: string }
+        scopeCategory: { type: string }
+        scopeTeam: { type: string }
+        scopeProduct: { type: string }
+        scopeResourceId: { type: string }
+        appliedAt: { type: string }
+        author: { type: string }
+        estimatedMonthlySavings: { type: number }
+        realizedMonthlySavingsOverride: { type: number }
+
+    AppliedChangeUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        appliedAt: { type: string }
+        author: { type: string }
+        estimatedMonthlySavings: { type: number }
+        realizedMonthlySavingsOverride:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [active, reverted]
+
+    OptimizationReportInput:
+      type: object
+      required: [title, periodStart, periodEnd]
+      properties:
+        title: { type: string }
+        periodStart: { type: string, description: "ISO date (YYYY-MM-DD), inclusive" }
+        periodEnd: { type: string, description: "ISO date (YYYY-MM-DD), exclusive" }
+        baselineId:
+          type: string
+          description: "If omitted, the active baseline (or most recent) is used."
+        costType:
+          type: string
+          enum: [BilledCost, EffectiveCost]
+        author: { type: string }
+
+    OptimizationReportSummary:
+      type: object
+      required:
+        - id
+        - tenantId
+        - title
+        - periodStart
+        - periodEnd
+        - currency
+        - totalCost
+        - baselineProjectedCost
+        - realizedSavings
+        - appliedChangesCount
+        - createdAt
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        title: { type: string }
+        periodStart: { type: string }
+        periodEnd: { type: string }
+        baselineId:
+          type: ["string", "null"]
+        baselineLabel:
+          type: ["string", "null"]
+        author:
+          type: ["string", "null"]
+        currency: { type: string }
+        totalCost: { type: number }
+        baselineProjectedCost: { type: number }
+        realizedSavings: { type: number }
+        appliedChangesCount: { type: integer }
+        pdfUrl: { type: string }
+        createdAt: { type: string }
+
+    OptimizationReport:
+      allOf:
+        - $ref: "#/components/schemas/OptimizationReportSummary"
+        - type: object
+          required: [sections]
+          properties:
+            sections:
+              type: object
+              required:
+                - executiveSummary
+                - topWins
+                - timeSeries
+                - efficiency
+                - byCategory
+                - byProvider
+                - byService
+                - byTeam
+                - byProduct
+                - appliedChanges
+                - openOpportunities
+                - baselineSnapshot
+              properties:
+                timeSeries:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportTimeSeriesPoint"
+                efficiency:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportEfficiencyMetric"
+                executiveSummary:
+                  type: object
+                  required: [periodLabel, baselineLabel, totalCost, baselineProjectedCost, realizedSavings, savingsPercent, appliedChangesCount, openOpportunitiesCount, openOpportunitiesMonthlySavings, topWinsLabel]
+                  properties:
+                    periodLabel: { type: string }
+                    baselineLabel: { type: string }
+                    totalCost: { type: number }
+                    baselineProjectedCost: { type: number }
+                    realizedSavings: { type: number }
+                    savingsPercent: { type: number }
+                    appliedChangesCount: { type: integer }
+                    openOpportunitiesCount: { type: integer }
+                    openOpportunitiesMonthlySavings: { type: number }
+                    topWinsLabel:
+                      type: ["string", "null"]
+                topWins:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportTopWin"
+                byCategory:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportComparisonRow"
+                byProvider:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportComparisonRow"
+                byService:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportComparisonRow"
+                byTeam:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportComparisonRow"
+                byProduct:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportComparisonRow"
+                appliedChanges:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportAppliedChange"
+                openOpportunities:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ReportOpportunity"
+                baselineSnapshot:
+                  type: object
+                  required: [periodStart, periodEnd, totalCost, monthlyAvg, months]
+                  properties:
+                    periodStart: { type: string }
+                    periodEnd: { type: string }
+                    totalCost: { type: number }
+                    monthlyAvg: { type: number }
+                    months: { type: integer }
+
+    ReportTimeSeriesPoint:
+      type: object
+      required: [month, actual, projectedNoOptimization]
+      properties:
+        month: { type: string }
+        actual: { type: number }
+        projectedNoOptimization: { type: number }
+
+    ReportEfficiencyMetric:
+      type: object
+      required: [key, label, value, unit, baselineValue, delta, hint]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        baselineValue:
+          type: ["number", "null"]
+        delta:
+          type: ["number", "null"]
+        hint: { type: string }
+
+    ReportComparisonRow:
+      type: object
+      required: [key, label, current, baseline, delta, deltaPct]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        current: { type: number }
+        baseline: { type: number }
+        delta: { type: number }
+        deltaPct: { type: number }
+
+    ReportTopWin:
+      type: object
+      required: [id, title, realizedMonthlySavings, realizedPeriodSavings, scope]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        realizedMonthlySavings: { type: number }
+        realizedPeriodSavings: { type: number }
+        scope:
+          type: ["string", "null"]
+
+    ReportAppliedChange:
+      type: object
+      required: [id, title, status, appliedAt, estimatedMonthlySavings, realizedMonthlySavings, realizedPeriodSavings, activeMonths]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string, description: "active | reverted" }
+        opportunityId:
+          type: ["string", "null"]
+        appliedAt: { type: string }
+        author:
+          type: ["string", "null"]
+        estimatedMonthlySavings: { type: number }
+        realizedMonthlySavings: { type: number }
+        realizedPeriodSavings: { type: number }
+        activeMonths: { type: integer }
+        scopeProvider:
+          type: ["string", "null"]
+        scopeService:
+          type: ["string", "null"]
+        scopeCategory:
+          type: ["string", "null"]
+
+    ReportOpportunity:
+      type: object
+      required: [id, title, category, provider, service, monthlySavings, effort]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category: { type: string }
+        provider: { type: string }
+        service: { type: string }
+        monthlySavings: { type: number }
+        effort: { type: string }
+        team: { type: string }
+        product: { type: string }

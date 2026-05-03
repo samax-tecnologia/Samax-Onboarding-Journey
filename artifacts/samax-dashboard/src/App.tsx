@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import DashboardPage from "@/pages/dashboard";
 import ConexoesPage from "@/pages/conexoes";
 import UnitEconomicsPage from "@/pages/unit-economics";
+import RelatoriosPage from "@/pages/relatorios";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/" component={DashboardPage} />
       <Route path="/conexoes" component={ConexoesPage} />
       <Route path="/unit-economics" component={UnitEconomicsPage} />
+      <Route path="/relatorios" component={RelatoriosPage} />
       <Route component={NotFound} />
     </Switch>
   );
