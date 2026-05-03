@@ -31,16 +31,17 @@ type SidebarNavItem = {
 const navItemsTop: SidebarNavItem[] = [
   { path: "/", label: "Comece por aqui", icon: PlayCircle, isNew: true },
   { path: "/inicio", label: "Início", icon: Home, externalDashboardPath: "/" },
-  { path: "/financeiro", label: "Financeiro", icon: Wallet, externalDashboardPath: "/" },
-  { path: "/otimizacao", label: "Otimização", icon: Sparkles, externalDashboardPath: "/" },
-  { path: "/recursos", label: "Recursos", icon: Package, externalDashboardPath: "/" },
-  { path: "/tags", label: "Tags", icon: Tag, externalDashboardPath: "/" },
-  { path: "/usuarios", label: "Usuários", icon: Users, externalDashboardPath: "/" },
+  { path: "/financeiro", label: "Financeiro", icon: Wallet, externalDashboardPath: "/financeiro" },
+  { path: "/otimizacao", label: "Otimização", icon: Sparkles, externalDashboardPath: "/savings" },
+  { path: "/recursos", label: "Recursos", icon: Package, externalDashboardPath: "/recursos" },
+  { path: "/tags", label: "Tags", icon: Tag, externalDashboardPath: "/tags" },
+  { path: "/usuarios", label: "Usuários", icon: Users, externalDashboardPath: "/teams" },
 ];
 
 const navItemsBottom: SidebarNavItem[] = [
   { path: "/jornada-samax", label: "Jornada Samax", icon: ClipboardCheck, isInternal: true },
-  { path: "/configuracoes", label: "Configurações", icon: Settings, externalDashboardPath: "/" },
+  { path: "/conexoes", label: "Conexões", icon: Wallet, externalDashboardPath: "/conexoes" },
+  { path: "/configuracoes", label: "Configurações", icon: Settings, externalDashboardPath: "/configuracoes" },
 ];
 
 export function Sidebar() {

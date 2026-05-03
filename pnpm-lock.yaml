@@ -25,7 +25,7 @@ catalogs:
       specifier: ^25.3.3
       version: 25.3.5
     '@types/react':
-      specifier: ^19.2.0
+      specifier: 19.2.14
       version: 19.2.14
     '@types/react-dom':
       specifier: ^19.2.0
@@ -403,6 +403,10 @@ importers:
         version: 3.25.76
 
   artifacts/samax-dashboard:
+    dependencies:
+      '@workspace/tenant-context':
+        specifier: workspace:*
+        version: link:../../lib/tenant-context
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
@@ -595,6 +599,10 @@ importers:
         version: 3.25.76
 
   artifacts/samax-onboarding:
+    dependencies:
+      '@workspace/tenant-context':
+        specifier: workspace:*
+        version: link:../../lib/tenant-context
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
@@ -828,6 +836,19 @@ importers:
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
+
+  lib/tenant-context:
+    dependencies:
+      '@workspace/api-client-react':
+        specifier: workspace:*
+        version: link:../api-client-react
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      react:
+        specifier: 'catalog:'
+        version: 19.1.0
 
   scripts:
     devDependencies:
