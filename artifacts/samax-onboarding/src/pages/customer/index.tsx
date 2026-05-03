@@ -167,7 +167,7 @@ function JourneyProgress() {
 
         <div className="relative">
           <Progress value={pct} className="h-2.5" aria-label="Progresso da jornada" />
-          <div className="grid grid-cols-4 gap-2 mt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
             {stagesProgress.map((s, idx) => {
               const stageDone = s.completed === s.total;
               const isCurrent = !allDone && idx === currentStageIndex;
