@@ -19,7 +19,7 @@ import {
   type FocusPoint,
 } from "@/lib/unit-economics-compute";
 import { formatCurrency, formatPercent, formatPeriod } from "@/lib/format";
-import { normalizePeriodMonth } from "@/lib/csv-parse";
+import { normalizePeriod } from "@/lib/csv-parse";
 
 type Props = {
   metric: UnitMetric;
@@ -32,7 +32,11 @@ export function DataPointTable({ metric, points, currency }: Props) {
   const denominator = getData(metric.id);
   const { toast } = useToast();
 
-  const series = useMemo(() => buildUnitSeries(points, denominator), [points, denominator]);
+  const granularity = metric.granularity ?? "month";
+  const series = useMemo(
+    () => buildUnitSeries(points, denominator, granularity),
+    [points, denominator, granularity],
+  );
 
   const [newPeriod, setNewPeriod] = useState("");
   const [newValue, setNewValue] = useState("");
@@ -50,9 +54,15 @@ export function DataPointTable({ metric, points, currency }: Props) {
   }, [denominator, series]);
 
   const onAdd = () => {
-    const p = normalizePeriodMonth(newPeriod);
+    const p = normalizePeriod(newPeriod, granularity);
     if (!p) {
-      toast({ title: "Período inválido (use AAAA-MM)", variant: "destructive" });
+      toast({
+        title:
+          granularity === "day"
+            ? "Período inválido (use AAAA-MM-DD)"
+            : "Período inválido (use AAAA-MM)",
+        variant: "destructive",
+      });
       return;
     }
     const n = Number(newValue.replace(",", "."));
@@ -184,12 +194,14 @@ export function DataPointTable({ metric, points, currency }: Props) {
 
       <div className="flex items-end gap-2 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Novo período (AAAA-MM)</label>
+          <label className="text-xs text-muted-foreground">
+            Novo período ({granularity === "day" ? "AAAA-MM-DD" : "AAAA-MM"})
+          </label>
           <Input
             className="h-8 w-36"
             value={newPeriod}
             onChange={(e) => setNewPeriod(e.target.value)}
-            placeholder="2026-05"
+            placeholder={granularity === "day" ? "2026-05-15" : "2026-05"}
             data-testid="new-period"
           />
         </div>

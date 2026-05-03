@@ -84,7 +84,10 @@ export function UnitMetricDetail({ metric }: Props) {
     [data],
   );
   const denominator = getData(metric.id);
-  const series = useMemo(() => buildUnitSeries(points, denominator), [points, denominator]);
+  const series = useMemo(
+    () => buildUnitSeries(points, denominator, metric.granularity ?? "month"),
+    [points, denominator, metric.granularity],
+  );
   const kpis = useMemo(() => computeKpis(series), [series]);
   const currency = data?.currency ?? "USD";
 

@@ -18,11 +18,22 @@ export function formatPercent(ratio: number, fractionDigits = 1): string {
   return `${(ratio * 100).toFixed(fractionDigits)}%`;
 }
 
-export function formatPeriod(yyyymm: string): string {
-  const [y, m] = yyyymm.split("-").map((v) => Number(v));
-  if (!y || !m) return yyyymm;
-  const d = new Date(Date.UTC(y, m - 1, 1));
-  return d.toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+export function formatPeriod(period: string): string {
+  // Accepts "YYYY-MM" or "YYYY-MM-DD".
+  const parts = period.split("-").map((v) => Number(v));
+  const [y, m, d] = parts;
+  if (!y || !m) return period;
+  if (d && parts.length >= 3) {
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.toLocaleString("en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "2-digit",
+      timeZone: "UTC",
+    });
+  }
+  const dt = new Date(Date.UTC(y, m - 1, 1));
+  return dt.toLocaleString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
 }
 
 export function humanize(key: string): string {

@@ -30,10 +30,13 @@ export type UnitMetric = {
   };
   /** Optional reference to a built-in template (used for CSV sample naming). */
   templateId?: TemplateId;
+  /** Period granularity. Defaults to "month" for backward-compat with metrics created
+   *  before this field existed. */
+  granularity?: "month" | "day";
   createdAt: string;
 };
 
-/** "YYYY-MM" — matches the FOCUS timeseries period bucket. */
+/** Either "YYYY-MM" (month-granularity) or "YYYY-MM-DD" (day-granularity). */
 export type Period = string;
 
 export type UnitDataPoint = {
@@ -177,6 +180,7 @@ export function UnitEconomicsProvider({ children }: { children: ReactNode }) {
         format: input.format,
         numerator: input.numerator ?? {},
         templateId: input.templateId,
+        granularity: input.granularity ?? "month",
         createdAt: existing?.createdAt ?? new Date().toISOString(),
       };
       result = next;

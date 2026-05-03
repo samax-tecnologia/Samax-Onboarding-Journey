@@ -63,6 +63,7 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
   const [category, setCategory] = useState<MetricCategory>("business");
   const [unitLabel, setUnitLabel] = useState("");
   const [format, setFormat] = useState<MetricFormat>("currency");
+  const [granularity, setGranularity] = useState<"month" | "day">("month");
   const [providers, setProviders] = useState("");
   const [teams, setTeams] = useState("");
   const [products, setProducts] = useState("");
@@ -77,6 +78,7 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       setCategory(editing.category);
       setUnitLabel(editing.unitLabel);
       setFormat(editing.format);
+      setGranularity(editing.granularity ?? "month");
       setProviders((editing.numerator.providers ?? []).join(", "));
       setTeams((editing.numerator.teams ?? []).join(", "));
       setProducts((editing.numerator.products ?? []).join(", "));
@@ -87,6 +89,7 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       setCategory("business");
       setUnitLabel("");
       setFormat("currency");
+      setGranularity("month");
       setProviders("");
       setTeams("");
       setProducts("");
@@ -121,6 +124,7 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       category,
       unitLabel: unitLabel.trim(),
       format,
+      granularity,
       templateId: templateId === "custom" ? undefined : templateId,
       numerator: {
         providers: csvList(providers),
@@ -219,20 +223,41 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Formato de exibição</Label>
-            <Select value={format} onValueChange={(v) => setFormat(v as MetricFormat)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FORMATS.map((f) => (
-                  <SelectItem key={f.value} value={f.value}>
-                    {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Formato de exibição</Label>
+              <Select value={format} onValueChange={(v) => setFormat(v as MetricFormat)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FORMATS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Granularidade do período</Label>
+              <Select
+                value={granularity}
+                onValueChange={(v) => setGranularity(v as "month" | "day")}
+              >
+                <SelectTrigger data-testid="metric-granularity">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Mensal (AAAA-MM)</SelectItem>
+                  <SelectItem value="day">Diária (AAAA-MM-DD)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Métricas diárias rateiam o custo mensal pelos dias do mês para calcular o custo unitário
+                por dia.
+              </p>
+            </div>
           </div>
 
           <div className="rounded-md border p-3 space-y-3">

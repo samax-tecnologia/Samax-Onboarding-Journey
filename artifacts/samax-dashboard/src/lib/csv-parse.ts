@@ -104,6 +104,41 @@ function pickDelimiter(line: string): string {
   return best;
 }
 
+/** Normalize a period string to "YYYY-MM-DD". Accepts:
+ *  "YYYY-MM-DD", "YYYY/MM/DD", "DD/MM/YYYY". Validates real calendar dates. */
+export function normalizePeriodDay(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  const fmt = (y: number, mo: number, d: number) => {
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    if (y < 1970 || y > 2999) return null;
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (
+      dt.getUTCFullYear() !== y ||
+      dt.getUTCMonth() !== mo - 1 ||
+      dt.getUTCDate() !== d
+    ) {
+      return null;
+    }
+    return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  };
+  // YYYY-MM-DD or YYYY/MM/DD
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (m) return fmt(Number(m[1]), Number(m[2]), Number(m[3]));
+  // DD/MM/YYYY (pt-BR)
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return fmt(Number(m[3]), Number(m[2]), Number(m[1]));
+  return null;
+}
+
+/** Normalize a period to either "YYYY-MM" or "YYYY-MM-DD" depending on granularity. */
+export function normalizePeriod(
+  raw: string,
+  granularity: "month" | "day",
+): string | null {
+  return granularity === "day" ? normalizePeriodDay(raw) : normalizePeriodMonth(raw);
+}
+
 /** Normalize a period string to "YYYY-MM". Accepts:
  *   "YYYY-MM", "YYYY-MM-DD" (truncates to month), "YYYY/MM", "MM/YYYY", "Jan 2025", etc.
  *  Returns null if it can't be parsed. */

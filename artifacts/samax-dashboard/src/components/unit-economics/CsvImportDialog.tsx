@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { parseCsv, normalizePeriodMonth, parseNumber } from "@/lib/csv-parse";
+import { parseCsv, normalizePeriod, parseNumber } from "@/lib/csv-parse";
 import { downloadCsv, toCsv } from "@/lib/export";
 import {
   TEMPLATES,
@@ -99,7 +99,7 @@ export function CsvImportDialog({ open, onOpenChange, metric }: Props) {
     rawRows.forEach((raw, i) => {
       const periodRaw = raw[pIdx] ?? "";
       const valueRaw = raw[vIdx] ?? "";
-      const period = normalizePeriodMonth(periodRaw);
+      const period = normalizePeriod(periodRaw, metric.granularity ?? "month");
       const value = parseNumber(valueRaw);
       if (!period) {
         errors.push({ rowIndex: i + 2, reason: `Período inválido: "${periodRaw}"`, raw });
@@ -148,9 +148,20 @@ export function CsvImportDialog({ open, onOpenChange, metric }: Props) {
     const slug = (t?.id ?? "unit-economics").toLowerCase();
     const today = new Date();
     const periods: string[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
-      periods.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+    if (metric.granularity === "day") {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i),
+        );
+        periods.push(
+          `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`,
+        );
+      }
+    } else {
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
+        periods.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+      }
     }
     const sampleValues =
       t?.id === "tech-cost-pct-revenue"
@@ -179,7 +190,8 @@ export function CsvImportDialog({ open, onOpenChange, metric }: Props) {
         <DialogHeader>
           <DialogTitle>Importar denominador via CSV</DialogTitle>
           <DialogDescription>
-            Carregue um CSV com pelo menos uma coluna de período (AAAA-MM) e uma de valor (volume).
+            Carregue um CSV com pelo menos uma coluna de período (
+            {metric.granularity === "day" ? "AAAA-MM-DD" : "AAAA-MM"}) e uma de valor (volume).
             Mapeie as colunas, revise os erros e confirme.
           </DialogDescription>
         </DialogHeader>
