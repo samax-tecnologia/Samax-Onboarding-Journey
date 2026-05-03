@@ -93,6 +93,126 @@ function WelcomeRow({ name }: { name: string }) {
 }
 
 // =============================================================================
+// Journey Progress
+// =============================================================================
+function JourneyProgress() {
+  const { state } = useJourney();
+
+  const { totalSteps, completedSteps, stagesProgress, currentStageIndex, allDone } = useMemo(() => {
+    const stagesProgress = CUSTOMER_STAGES.map((stage) => {
+      const completed = stage.customerSteps.filter(
+        (step) =>
+          step.linkedTaskIds.length > 0 &&
+          step.linkedTaskIds.every((id) => state.completedTaskIds.includes(id)),
+      ).length;
+      return { stage, completed, total: stage.customerSteps.length };
+    });
+    const totalSteps = stagesProgress.reduce((sum, s) => sum + s.total, 0);
+    const completedSteps = stagesProgress.reduce((sum, s) => sum + s.completed, 0);
+    const currentStageIndex = stagesProgress.findIndex((s) => s.completed < s.total);
+    const allDone = currentStageIndex === -1;
+    return { totalSteps, completedSteps, stagesProgress, currentStageIndex, allDone };
+  }, [state.completedTaskIds]);
+
+  const pct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+  const currentStage = allDone
+    ? stagesProgress[stagesProgress.length - 1].stage
+    : stagesProgress[currentStageIndex].stage;
+
+  return (
+    <Card
+      className="mb-6 border-border shadow-sm"
+      data-testid="journey-progress"
+    >
+      <CardContent className="p-5 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+              Progresso da sua jornada
+            </p>
+            {allDone ? (
+              <h2
+                className="text-lg font-semibold tracking-tight inline-flex items-center gap-2"
+                data-testid="journey-progress-title"
+              >
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+                Jornada concluída
+              </h2>
+            ) : (
+              <h2
+                className="text-lg font-semibold tracking-tight"
+                data-testid="journey-progress-title"
+              >
+                Etapa {currentStage.number} de {CUSTOMER_STAGES.length} — {currentStage.title}
+              </h2>
+            )}
+          </div>
+          <div className="flex items-center gap-4 md:gap-5 shrink-0">
+            <div className="text-right">
+              <p
+                className="text-2xl font-semibold text-primary tabular-nums leading-none"
+                data-testid="journey-progress-percent"
+              >
+                {pct}%
+              </p>
+              <p
+                className="text-xs text-muted-foreground mt-1 tabular-nums"
+                data-testid="journey-progress-counter"
+              >
+                {completedSteps} de {totalSteps} passos concluídos
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Progress value={pct} className="h-2.5" aria-label="Progresso da jornada" />
+          <div className="grid grid-cols-4 gap-2 mt-3">
+            {stagesProgress.map((s, idx) => {
+              const stageDone = s.completed === s.total;
+              const isCurrent = !allDone && idx === currentStageIndex;
+              return (
+                <div
+                  key={s.stage.id}
+                  className="flex items-center gap-2 min-w-0"
+                  data-testid={`journey-progress-tick-${s.stage.id}`}
+                >
+                  <span
+                    className={cn(
+                      "w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-semibold shrink-0 transition-colors",
+                      stageDone
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : isCurrent
+                          ? "bg-background border-primary text-primary"
+                          : "bg-background border-muted-foreground/40 text-muted-foreground",
+                    )}
+                  >
+                    {stageDone ? <Check className="w-3 h-3" strokeWidth={3} /> : s.stage.number}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className={cn(
+                        "text-[11px] font-medium truncate",
+                        stageDone || isCurrent ? "text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      {s.stage.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground tabular-nums">
+                      {s.completed}/{s.total}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
 // Next Action Hero
 // =============================================================================
 function NextActionHero() {
@@ -700,6 +820,7 @@ export default function CustomerPage() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <WelcomeRow name={state.customerProfile.name} />
+      <JourneyProgress />
       <NextActionHero />
       <PreContractRecap />
       <EnvironmentSignals />
