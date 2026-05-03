@@ -8,6 +8,7 @@ import CustomerPage from "@/pages/customer";
 import InternalPage from "@/pages/internal";
 import PlaceholderPage from "@/pages/placeholder";
 import { JourneyProvider } from "@/lib/journey-store";
+import { TenantProvider } from "@/lib/tenant-store";
 import { NotificationToaster } from "@/components/notifications/NotificationToaster";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <TenantProvider>
         <JourneyProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AppLayout>
@@ -55,6 +57,7 @@ function App() {
             <NotificationToaster />
           </WouterRouter>
         </JourneyProvider>
+        </TenantProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

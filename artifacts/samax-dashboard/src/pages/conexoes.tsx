@@ -4,6 +4,7 @@ import {
   useCreateConnection,
   useDeleteConnection,
   useSyncConnection,
+  useGetOnboardingSummary,
   type Connection,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
+  ClipboardCheck,
 } from "lucide-react";
 
 type ProviderId = "sample" | "aws" | "azure" | "gcp";
@@ -290,6 +292,7 @@ export default function ConexoesPage() {
 
   return (
     <div className="px-8 py-6 space-y-6">
+      <OnboardingStatusCard tenantId={tenantId} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Conexões de dados</h1>
@@ -328,5 +331,37 @@ export default function ConexoesPage() {
 
       <AddConnectionDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
+  );
+}
+
+function OnboardingStatusCard({ tenantId }: { tenantId: string }) {
+  const { data } = useGetOnboardingSummary(tenantId);
+  if (!data) return null;
+  const onboardingHref = `/?tenant=${encodeURIComponent(tenantId)}`;
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+            <ClipboardCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">
+              Onboarding · etapa {data.currentStage.number}/{data.stagesTotal} —{" "}
+              <span className="text-primary">{data.currentStage.title}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {data.stagesCompleted} de {data.stagesTotal} etapas concluídas ·{" "}
+              {data.hasActiveConnection ? "conexão ativa detectada" : "ainda sem conexão ativa"}.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+          <a href={onboardingHref} target="_blank" rel="noopener" data-testid="conexoes-onboarding-link">
+            Ver passos do onboarding <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

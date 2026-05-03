@@ -8,10 +8,12 @@ import {
   Package,
   Settings,
   Plug,
+  ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useTenant } from "@/lib/tenant-store";
 
 type NavItem = {
   path: string;
@@ -19,6 +21,7 @@ type NavItem = {
   icon: LucideIcon;
   isNew?: boolean;
   disabled?: boolean;
+  external?: boolean;
 };
 
 const navTop: NavItem[] = [
@@ -32,14 +35,16 @@ const navTop: NavItem[] = [
 
 const navBottom: NavItem[] = [
   { path: "/conexoes", label: "Conexões", icon: Plug },
+  { path: "/?onboarding", label: "Onboarding", icon: ClipboardCheck, external: true },
   { path: "/configuracoes", label: "Configurações", icon: Settings, disabled: true },
 ];
 
 export function Sidebar() {
   const [location] = useLocation();
+  const { tenantId } = useTenant();
 
   const renderItem = (item: NavItem) => {
-    const isActive = location === item.path;
+    const isActive = !item.external && location === item.path;
     const cls = cn(
       "flex items-center gap-3 px-3 py-2 rounded-md transition-colors group",
       isActive
@@ -75,6 +80,22 @@ export function Sidebar() {
         <div key={item.path} className={cls} aria-disabled>
           {inner}
         </div>
+      );
+    }
+
+    if (item.external) {
+      // Cross-app navigation: open the onboarding app on / preserving tenant.
+      return (
+        <a
+          key={item.path}
+          href={`/?tenant=${encodeURIComponent(tenantId)}`}
+          target="_blank"
+          rel="noopener"
+          className={cls}
+          data-testid="sidebar-onboarding-link"
+        >
+          {inner}
+        </a>
       );
     }
 

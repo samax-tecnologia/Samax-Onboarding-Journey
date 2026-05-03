@@ -30,6 +30,7 @@ import type {
   GetFocusSummaryParams,
   GetFocusTimeSeriesParams,
   HealthStatus,
+  OnboardingSummary,
   SyncResult,
 } from "./api.schemas";
 
@@ -896,6 +897,96 @@ export function useGetFocusSavings<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetFocusSavingsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Lightweight aggregate used by the onboarding app to know whether a connection already exists, and by the dashboard to show onboarding status.
+ * @summary Cross-app onboarding summary for a tenant
+ */
+export const getGetOnboardingSummaryUrl = (tenantId: string) => {
+  return `/api/tenants/${tenantId}/onboarding-summary`;
+};
+
+export const getOnboardingSummary = async (
+  tenantId: string,
+  options?: RequestInit,
+): Promise<OnboardingSummary> => {
+  return customFetch<OnboardingSummary>(getGetOnboardingSummaryUrl(tenantId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOnboardingSummaryQueryKey = (tenantId: string) => {
+  return [`/api/tenants/${tenantId}/onboarding-summary`] as const;
+};
+
+export const getGetOnboardingSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOnboardingSummary>>,
+  TError = ErrorType<void>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOnboardingSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOnboardingSummaryQueryKey(tenantId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOnboardingSummary>>
+  > = ({ signal }) =>
+    getOnboardingSummary(tenantId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!tenantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOnboardingSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOnboardingSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOnboardingSummary>>
+>;
+export type GetOnboardingSummaryQueryError = ErrorType<void>;
+
+/**
+ * @summary Cross-app onboarding summary for a tenant
+ */
+
+export function useGetOnboardingSummary<
+  TData = Awaited<ReturnType<typeof getOnboardingSummary>>,
+  TError = ErrorType<void>,
+>(
+  tenantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOnboardingSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOnboardingSummaryQueryOptions(tenantId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

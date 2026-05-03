@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer, ReactNode, useRef } from "react";
 import { PHASES, CUSTOMER_PROFILE, OPPORTUNITIES } from "./constants";
+import { useTenant } from "./tenant-store";
 
 export type PhaseStatus = "not-started" | "in-progress" | "blocked" | "done";
 export type OppDecision = "pending" | "approved" | "rejected" | "deferred";
@@ -29,6 +30,7 @@ export interface JourneyState {
 
 type Action =
   | { type: "TOGGLE_TASK"; payload: string }
+  | { type: "MARK_TASKS_COMPLETE"; payload: string[] }
   | { type: "SET_PHASE_STATUS"; payload: { phaseId: string; status: PhaseStatus } }
   | { type: "SET_PHASE_NOTE"; payload: { phaseId: string; note: string } }
   | { type: "SET_PHASE_BLOCKER"; payload: { phaseId: string; blocker: string } }
@@ -56,8 +58,13 @@ const defaultState: JourneyState = {
   notifications: [],
 };
 
-const STORAGE_KEY = "samax-journey-v2";
+const STORAGE_KEY_PREFIX = "samax-journey-v2";
 const LEGACY_KEY = "samax-onboarding-progress";
+const LEGACY_GLOBAL_KEY = "samax-journey-v2";
+
+function storageKeyFor(tenantId: string) {
+  return `${STORAGE_KEY_PREFIX}:${tenantId}`;
+}
 const NOTIFICATION_LIMIT = 50;
 
 function genId(): string {
@@ -75,6 +82,19 @@ function reduce(state: JourneyState, action: Action): JourneyState {
           ? state.completedTaskIds.filter((id) => id !== taskId)
           : [...state.completedTaskIds, taskId],
       };
+    }
+    case "MARK_TASKS_COMPLETE": {
+      const ids = action.payload;
+      const set = new Set(state.completedTaskIds);
+      let changed = false;
+      for (const id of ids) {
+        if (!set.has(id)) {
+          set.add(id);
+          changed = true;
+        }
+      }
+      if (!changed) return state;
+      return { ...state, completedTaskIds: Array.from(set) };
     }
     case "SET_PHASE_STATUS":
       return {
@@ -166,46 +186,72 @@ const JourneyContext = createContext<{
 } | null>(null);
 
 export function JourneyProvider({ children }: { children: ReactNode }) {
+  const { tenantId } = useTenant();
   const [state, dispatch] = useReducer(reduce, defaultState);
   const isHydrated = useRef(false);
   const lastWriteRef = useRef<string>("");
+  const currentKeyRef = useRef<string>(storageKeyFor(tenantId));
 
-  // Hydrate once
+  // Hydrate / re-hydrate when tenant changes.
   useEffect(() => {
-    const savedV2 = localStorage.getItem(STORAGE_KEY);
+    const key = storageKeyFor(tenantId);
+    currentKeyRef.current = key;
+    isHydrated.current = false;
+    lastWriteRef.current = "";
+
+    const savedV2 = localStorage.getItem(key);
     if (savedV2) {
       try {
         dispatch({ type: "LOAD_STATE", payload: sanitize(JSON.parse(savedV2)) });
       } catch (e) {
         console.error("Failed to load journey state", e);
+        dispatch({ type: "LOAD_STATE", payload: defaultState });
       }
     } else {
-      const savedV1 = localStorage.getItem(LEGACY_KEY);
-      if (savedV1) {
+      // One-time migration from legacy global keys, only into the very first
+      // tenant a user lands on (so we don't pollute every tenant with the same
+      // legacy progress).
+      const legacyGlobal = localStorage.getItem(LEGACY_GLOBAL_KEY);
+      const legacyV1 = localStorage.getItem(LEGACY_KEY);
+      let migrated = false;
+      if (legacyGlobal) {
         try {
-          const completedTaskIds = JSON.parse(savedV1);
-          const migrated = sanitize({ completedTaskIds });
-          dispatch({ type: "LOAD_STATE", payload: migrated });
-        } catch (e) {}
+          dispatch({ type: "LOAD_STATE", payload: sanitize(JSON.parse(legacyGlobal)) });
+          migrated = true;
+        } catch (e) { /* ignore */ }
+      } else if (legacyV1) {
+        try {
+          const completedTaskIds = JSON.parse(legacyV1);
+          dispatch({ type: "LOAD_STATE", payload: sanitize({ completedTaskIds }) });
+          migrated = true;
+        } catch (e) { /* ignore */ }
       }
+      if (!migrated) {
+        dispatch({ type: "LOAD_STATE", payload: defaultState });
+      }
+      // Clear legacy keys so they only seed once.
+      try {
+        if (legacyGlobal) localStorage.removeItem(LEGACY_GLOBAL_KEY);
+        if (legacyV1) localStorage.removeItem(LEGACY_KEY);
+      } catch { /* ignore */ }
     }
     isHydrated.current = true;
-  }, []);
+  }, [tenantId]);
 
-  // Persist on change
+  // Persist on change (under the current tenant's key).
   useEffect(() => {
     if (!isHydrated.current) return;
     const serialized = JSON.stringify(state);
     if (serialized !== lastWriteRef.current) {
       lastWriteRef.current = serialized;
-      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(currentKeyRef.current, serialized);
     }
   }, [state]);
 
-  // Cross-tab sync
+  // Cross-tab sync (only react to writes on the current tenant's key).
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY || !e.newValue) return;
+      if (!e.key || e.key !== currentKeyRef.current || !e.newValue) return;
       if (e.newValue === lastWriteRef.current) return;
       try {
         const next = sanitize(JSON.parse(e.newValue));
@@ -217,7 +263,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [tenantId]);
 
   return <JourneyContext.Provider value={{ state, dispatch }}>{children}</JourneyContext.Provider>;
 }
@@ -233,6 +279,7 @@ export function useJourney() {
 
   const actions = {
     toggleTask: (taskId: string) => dispatch({ type: "TOGGLE_TASK", payload: taskId }),
+    markTasksComplete: (taskIds: string[]) => dispatch({ type: "MARK_TASKS_COMPLETE", payload: taskIds }),
     setPhaseStatus: (phaseId: string, status: PhaseStatus, notify = false) => {
       const prev = state.phaseStatuses[phaseId] ?? "not-started";
       dispatch({ type: "SET_PHASE_STATUS", payload: { phaseId, status } });

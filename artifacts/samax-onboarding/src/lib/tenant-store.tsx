@@ -9,7 +9,7 @@ import {
 } from "react";
 import { setExtraHeadersGetter } from "@workspace/api-client-react";
 
-const TENANTS = [
+export const TENANTS = [
   { id: "demo", label: "Demo (mock)" },
   { id: "acme", label: "Acme Cloud (live)" },
 ] as const;
@@ -53,8 +53,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Re-register the header getter whenever the tenant changes so the next
-  // fetch sees the new value. Safe across React strict-mode double mounts.
   useEffect(() => {
     setExtraHeadersGetter(() => ({ "x-samax-tenant": tenantId }));
     return () => setExtraHeadersGetter(null);
@@ -65,7 +63,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, id);
   }, []);
 
-  const value = useMemo(() => ({ tenantId, setTenantId, options: TENANTS }), [tenantId, setTenantId]);
+  const value = useMemo(
+    () => ({ tenantId, setTenantId, options: TENANTS }),
+    [tenantId, setTenantId],
+  );
   return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 }
 

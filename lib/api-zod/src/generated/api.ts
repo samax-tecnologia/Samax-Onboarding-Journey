@@ -337,3 +337,33 @@ export const GetFocusSavingsResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Lightweight aggregate used by the onboarding app to know whether a connection already exists, and by the dashboard to show onboarding status.
+ * @summary Cross-app onboarding summary for a tenant
+ */
+export const GetOnboardingSummaryParams = zod.object({
+  tenantId: zod.coerce.string(),
+});
+
+export const GetOnboardingSummaryResponse = zod.object({
+  tenantId: zod.string(),
+  hasActiveConnection: zod
+    .boolean()
+    .describe("True when at least one provider_connection has status='ok'"),
+  connectionCount: zod
+    .number()
+    .describe("Total provider_connections rows for this tenant"),
+  stagesTotal: zod
+    .number()
+    .describe("Total customer-visible stages in the onboarding journey"),
+  stagesCompleted: zod
+    .number()
+    .describe(
+      "Stages estimated as completed (derived from connection state for now)",
+    ),
+  currentStage: zod.object({
+    number: zod.number(),
+    title: zod.string(),
+  }),
+});

@@ -32,6 +32,8 @@ export * from "./getFocusSummaryParams";
 export * from "./getFocusTimeSeriesMonths";
 export * from "./getFocusTimeSeriesParams";
 export * from "./healthStatus";
+export * from "./onboardingSummary";
+export * from "./onboardingSummaryCurrentStage";
 export * from "./productsParamParameter";
 export * from "./providersParamParameter";
 export * from "./savingOpportunity";

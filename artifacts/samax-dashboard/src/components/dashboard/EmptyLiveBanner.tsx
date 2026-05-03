@@ -1,12 +1,14 @@
 import { Link } from "wouter";
 import { useGetFocusSummary } from "@workspace/api-client-react";
 import { useFilters, toCommonParams } from "@/lib/filters-store";
+import { useTenant } from "@/lib/tenant-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plug } from "lucide-react";
+import { Plug, ClipboardCheck } from "lucide-react";
 
 export function EmptyLiveBanner() {
   const { filters, anchorEnd } = useFilters();
+  const { tenantId } = useTenant();
   const { data } = useGetFocusSummary(toCommonParams(filters, anchorEnd));
   if (!data || data.dataSource !== "live" || data.hasLiveData) return null;
   return (
@@ -17,11 +19,23 @@ export function EmptyLiveBanner() {
           Conecte AWS, Azure ou GCP — ou crie uma conexão de exemplo — para ver os números reais aqui.
         </p>
       </div>
-      <Link href="/conexoes">
-        <Button>
-          <Plug className="w-4 h-4 mr-1.5" /> Configurar conexões
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="outline" asChild>
+          <a
+            href={`/?tenant=${encodeURIComponent(tenantId)}`}
+            target="_blank"
+            rel="noopener"
+            data-testid="empty-banner-onboarding-cta"
+          >
+            <ClipboardCheck className="w-4 h-4 mr-1.5" /> Ver passos do onboarding
+          </a>
         </Button>
-      </Link>
+        <Link href="/conexoes">
+          <Button>
+            <Plug className="w-4 h-4 mr-1.5" /> Configurar conexões
+          </Button>
+        </Link>
+      </div>
     </Card>
   );
 }

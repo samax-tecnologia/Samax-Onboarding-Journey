@@ -208,6 +208,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/FocusSavings"
 
+  /tenants/{tenantId}/onboarding-summary:
+    get:
+      operationId: getOnboardingSummary
+      tags: [tenants]
+      summary: Cross-app onboarding summary for a tenant
+      description: Lightweight aggregate used by the onboarding app to know whether a connection already exists, and by the dashboard to show onboarding status.
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingSummary"
+        "404":
+          description: Unknown tenant
+
 components:
   parameters:
     StartDateParam:
@@ -490,3 +511,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SavingOpportunity"
+
+    OnboardingSummary:
+      type: object
+      required: [tenantId, hasActiveConnection, connectionCount, stagesTotal, stagesCompleted, currentStage]
+      properties:
+        tenantId: { type: string }
+        hasActiveConnection: { type: boolean, description: True when at least one provider_connection has status='ok' }
+        connectionCount: { type: integer, description: Total provider_connections rows for this tenant }
+        stagesTotal: { type: integer, description: Total customer-visible stages in the onboarding journey }
+        stagesCompleted: { type: integer, description: Stages estimated as completed (derived from connection state for now) }
+        currentStage:
+          type: object
+          required: [number, title]
+          properties:
+            number: { type: integer }
+            title: { type: string }

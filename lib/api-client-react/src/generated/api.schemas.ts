@@ -215,6 +215,24 @@ export interface FocusSavings {
   opportunities: SavingOpportunity[];
 }
 
+export type OnboardingSummaryCurrentStage = {
+  number: number;
+  title: string;
+};
+
+export interface OnboardingSummary {
+  tenantId: string;
+  /** True when at least one provider_connection has status='ok' */
+  hasActiveConnection: boolean;
+  /** Total provider_connections rows for this tenant */
+  connectionCount: number;
+  /** Total customer-visible stages in the onboarding journey */
+  stagesTotal: number;
+  /** Stages estimated as completed (derived from connection state for now) */
+  stagesCompleted: number;
+  currentStage: OnboardingSummaryCurrentStage;
+}
+
 /**
  * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
  */

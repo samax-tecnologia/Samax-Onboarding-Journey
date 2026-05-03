@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGetOnboardingSummary } from "@workspace/api-client-react";
+import { useTenant } from "@/lib/tenant-store";
 import {
   ArrowRight,
   Check,
@@ -93,10 +95,70 @@ function WelcomeRow({ name }: { name: string }) {
 }
 
 // =============================================================================
+// Cross-app onboarding sync (auto-check Conectar stage when an active
+// connection exists in the dashboard for the current tenant).
+// =============================================================================
+const AUTOCHECK_KEY = "samax-tenant-autocheck-v1";
+
+function readAutocheckedTenants(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(AUTOCHECK_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function useOnboardingSync() {
+  const { tenantId } = useTenant();
+  const { actions } = useJourney();
+  const { data } = useGetOnboardingSummary(tenantId);
+  // Per-tab guard: even if persistence fails, never fire twice for the same tenant.
+  const attemptedRef = useRef<Set<string>>(new Set());
+  // Stable action ref so the effect doesn't depend on the actions object identity.
+  const markRef = useRef(actions.markTasksComplete);
+  markRef.current = actions.markTasksComplete;
+
+  const hasActiveConnection = data?.hasActiveConnection ?? false;
+
+  useEffect(() => {
+    if (!hasActiveConnection) return;
+    if (attemptedRef.current.has(tenantId)) return;
+
+    const persisted = readAutocheckedTenants();
+    if (persisted.includes(tenantId)) {
+      attemptedRef.current.add(tenantId);
+      return;
+    }
+
+    const stage1 = CUSTOMER_STAGES[0];
+    const linkedIds = stage1.customerSteps.flatMap((s) => s.linkedTaskIds);
+    // Idempotent: reducer only adds missing ids, never removes.
+    markRef.current(linkedIds);
+    attemptedRef.current.add(tenantId);
+
+    try {
+      window.localStorage.setItem(
+        AUTOCHECK_KEY,
+        JSON.stringify([...persisted, tenantId]),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [hasActiveConnection, tenantId]);
+
+  return { hasActiveConnection };
+}
+
+// =============================================================================
 // Journey Progress
 // =============================================================================
 function JourneyProgress() {
   const { state } = useJourney();
+  const { hasActiveConnection } = useOnboardingSync();
 
   const { totalSteps, completedSteps, stagesProgress, currentStageIndex, allDone } = useMemo(() => {
     const stagesProgress = CUSTOMER_STAGES.map((stage) => {
@@ -171,6 +233,7 @@ function JourneyProgress() {
             {stagesProgress.map((s, idx) => {
               const stageDone = s.completed === s.total;
               const isCurrent = !allDone && idx === currentStageIndex;
+              const showActiveConn = s.stage.id === "conectar" && hasActiveConnection;
               return (
                 <div
                   key={s.stage.id}
@@ -200,6 +263,16 @@ function JourneyProgress() {
                     </p>
                     <p className="text-[10px] text-muted-foreground tabular-nums">
                       {s.completed}/{s.total}
+                      {showActiveConn && (
+                        <span
+                          className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] text-primary font-semibold"
+                          data-testid="active-connection-badge"
+                          title="Conexão de dados ativa para este tenant"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                          Conexão ativa
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -217,6 +290,7 @@ function JourneyProgress() {
 // =============================================================================
 function NextActionHero() {
   const { state, actions } = useJourney();
+  const { tenantId } = useTenant();
   const [open, setOpen] = useState(false);
 
   const next = useMemo(() => {
@@ -261,6 +335,9 @@ function NextActionHero() {
     setOpen(false);
   };
 
+  const isConnectStage = next.stage.id === "conectar";
+  const dashboardConnHref = `/dashboard/conexoes?tenant=${encodeURIComponent(tenantId)}`;
+
   return (
     <Card className="mb-8 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-background shadow-sm">
       <CardContent className="p-6 md:p-7">
@@ -273,9 +350,23 @@ function NextActionHero() {
               {next.step.label}
             </h2>
             <p className="text-sm text-muted-foreground mt-2 max-w-xl">
-              Quando você concluir, a Samax avança automaticamente para os próximos passos desta etapa.
+              {isConnectStage
+                ? "Configure sua conexão de dados no painel da Samax. Assim que ficar ativa, esta etapa avança aqui automaticamente."
+                : "Quando você concluir, a Samax avança automaticamente para os próximos passos desta etapa."}
             </p>
           </div>
+          {isConnectStage ? (
+            <Button size="lg" className="shrink-0 gap-2" asChild>
+              <a
+                href={dashboardConnHref}
+                target="_blank"
+                rel="noopener"
+                data-testid="next-action-connect-cta"
+              >
+                Configurar conexão <ArrowRight className="w-4 h-4" />
+              </a>
+            </Button>
+          ) : (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button size="lg" className="shrink-0 gap-2">
@@ -304,6 +395,7 @@ function NextActionHero() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </CardContent>
     </Card>
