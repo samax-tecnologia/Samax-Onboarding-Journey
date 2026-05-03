@@ -90,6 +90,37 @@ export function computeKpis(rows: UnitSeriesRow[]): UnitKpis {
   return { current, previous, delta, deltaPercent };
 }
 
+export type ThresholdStatus = "above" | "below" | "ok" | "unknown";
+
+/** Classify a unit-cost value against the metric's optional thresholds.
+ *  - "above": exceeded upperBound (worse for cost-style metrics)
+ *  - "below": fell below lowerBound
+ *  - "ok": value is inside the configured band (or no bounds set but a value exists)
+ *  - "unknown": no value to evaluate
+ */
+export function evaluateThreshold(
+  value: number | null | undefined,
+  thresholds: UnitMetric["thresholds"],
+): ThresholdStatus {
+  if (value == null || !Number.isFinite(value)) return "unknown";
+  if (!thresholds) return "ok";
+  const { upperBound, lowerBound } = thresholds;
+  if (typeof upperBound === "number" && value > upperBound) return "above";
+  if (typeof lowerBound === "number" && value < lowerBound) return "below";
+  return "ok";
+}
+
+/** True when the metric has at least one configured bound or target. */
+export function hasThresholds(metric: Pick<UnitMetric, "thresholds">): boolean {
+  const t = metric.thresholds;
+  if (!t) return false;
+  return (
+    typeof t.target === "number" ||
+    typeof t.upperBound === "number" ||
+    typeof t.lowerBound === "number"
+  );
+}
+
 /**
  * Format a unit cost value for display, depending on the metric's display format.
  * - "currency": treats the unit cost as money (e.g. $1234 / customer)

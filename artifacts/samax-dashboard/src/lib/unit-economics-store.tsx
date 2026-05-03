@@ -33,6 +33,16 @@ export type UnitMetric = {
   /** Period granularity. Defaults to "month" for backward-compat with metrics created
    *  before this field existed. */
   granularity?: "month" | "day";
+  /** Optional thresholds for the unit cost. Any combination of:
+   *   - target: ideal value (rendered as a reference line)
+   *   - upperBound: maximum acceptable value (above = "fora do alvo")
+   *   - lowerBound: minimum acceptable value (below = "fora do alvo")
+   *  Values are in the same units as the metric's `format` (currency or ratio for percent). */
+  thresholds?: {
+    target?: number;
+    upperBound?: number;
+    lowerBound?: number;
+  };
   createdAt: string;
 };
 
@@ -181,6 +191,7 @@ export function UnitEconomicsProvider({ children }: { children: ReactNode }) {
         numerator: input.numerator ?? {},
         templateId: input.templateId,
         granularity: input.granularity ?? "month",
+        thresholds: input.thresholds,
         createdAt: existing?.createdAt ?? new Date().toISOString(),
       };
       result = next;

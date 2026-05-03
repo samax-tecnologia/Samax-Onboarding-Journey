@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetFocusTimeSeries } from "@workspace/api-client-react";
 import { useFilters, toCommonParams } from "@/lib/filters-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowDown, ArrowUp, Minus, Pencil, Upload, Trash2, Copy } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Minus, Pencil, Upload, Trash2, Copy } from "lucide-react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -16,12 +16,17 @@ import {
   YAxis,
   Tooltip,
   Legend,
+  ReferenceLine,
 } from "recharts";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUnitEconomics, type UnitMetric } from "@/lib/unit-economics-store";
 import {
   buildUnitSeries,
   computeKpis,
+  evaluateThreshold,
   formatUnitCost,
+  hasThresholds,
+  type ThresholdStatus,
 } from "@/lib/unit-economics-compute";
 import { formatCurrency, formatPercent, formatPeriod } from "@/lib/format";
 import { DataPointTable } from "./DataPointTable";
@@ -29,7 +34,12 @@ import { CsvImportDialog } from "./CsvImportDialog";
 import { MetricEditor } from "./MetricEditor";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { metric: UnitMetric };
+type Props = {
+  metric: UnitMetric;
+  /** Reports the current breach status of the latest period back to the parent
+   *  so it can decorate the sidebar list. Called whenever the status changes. */
+  onBreachChange?: (metricId: string, status: ThresholdStatus) => void;
+};
 
 function intersect(a: string[] | undefined, b: string[] | undefined): string[] | undefined {
   if (!a || a.length === 0) return b && b.length > 0 ? b : undefined;
@@ -39,7 +49,7 @@ function intersect(a: string[] | undefined, b: string[] | undefined): string[] |
   return r.length > 0 ? r : ["__none__"]; // ensure empty result if mutually exclusive
 }
 
-export function UnitMetricDetail({ metric }: Props) {
+export function UnitMetricDetail({ metric, onBreachChange }: Props) {
   const { filters, anchorEnd } = useFilters();
   const { getData, deleteMetric, duplicateMetric } = useUnitEconomics();
   const { toast } = useToast();
@@ -91,6 +101,52 @@ export function UnitMetricDetail({ metric }: Props) {
   const kpis = useMemo(() => computeKpis(series), [series]);
   const currency = data?.currency ?? "USD";
 
+  const currentStatus: ThresholdStatus = useMemo(
+    () => evaluateThreshold(kpis.current?.unitCost ?? null, metric.thresholds),
+    [kpis.current?.unitCost, metric.thresholds],
+  );
+  const currentBreach = currentStatus === "above" || currentStatus === "below";
+
+  // Fire a toast (the app-wide notification surface) the first time we observe
+  // the latest period crossing a configured limit. We key the ref by metric id
+  // + period + status so the same alert isn't repeated for the same datapoint.
+  const lastNotifiedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentBreach || !kpis.current) return;
+    const key = `${metric.id}|${kpis.current.period}|${currentStatus}`;
+    if (lastNotifiedRef.current === key) return;
+    lastNotifiedRef.current = key;
+    const value = formatUnitCost(
+      kpis.current.unitCost,
+      metric,
+      currency,
+      formatCurrency,
+      formatPercent,
+    );
+    const limit =
+      currentStatus === "above" ? metric.thresholds?.upperBound : metric.thresholds?.lowerBound;
+    const limitFormatted =
+      limit != null
+        ? formatUnitCost(limit, metric, currency, formatCurrency, formatPercent)
+        : "";
+    toast({
+      title: `Alerta: ${metric.name} fora do alvo`,
+      description:
+        currentStatus === "above"
+          ? `Custo unitário em ${formatPeriod(kpis.current.period)} (${value}) ultrapassou o limite superior${limitFormatted ? ` de ${limitFormatted}` : ""}.`
+          : `Custo unitário em ${formatPeriod(kpis.current.period)} (${value}) ficou abaixo do limite inferior${limitFormatted ? ` de ${limitFormatted}` : ""}.`,
+      variant: "destructive",
+    });
+  }, [currentBreach, currentStatus, kpis.current, metric, currency, toast]);
+
+  // Lift breach status up so the sidebar can decorate the metric list with the
+  // real unit-cost-based breach (the sidebar can't compute it itself without
+  // hitting the FOCUS API for every metric).
+  useEffect(() => {
+    if (!onBreachChange) return;
+    onBreachChange(metric.id, currentStatus);
+  }, [onBreachChange, metric.id, currentStatus]);
+
   const onDelete = () => {
     if (!window.confirm(`Remover a métrica "${metric.name}"? Os dados informados serão perdidos.`)) {
       return;
@@ -118,6 +174,16 @@ export function UnitMetricDetail({ metric }: Props) {
             <Badge variant="secondary" className="text-[11px]">
               por {metric.unitLabel}
             </Badge>
+            {currentBreach && (
+              <Badge
+                variant="destructive"
+                className="text-[11px] gap-1"
+                data-testid="metric-detail-breach"
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Fora do alvo
+              </Badge>
+            )}
           </div>
           {metric.description && (
             <p className="text-sm text-muted-foreground mt-1">{metric.description}</p>
@@ -139,6 +205,35 @@ export function UnitMetricDetail({ metric }: Props) {
         </div>
       </div>
 
+      {currentBreach && kpis.current && (
+        <Alert variant="destructive" data-testid="metric-detail-alert">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>
+            {currentStatus === "above"
+              ? "Custo unitário acima do limite superior"
+              : "Custo unitário abaixo do limite inferior"}
+          </AlertTitle>
+          <AlertDescription>
+            Em {formatPeriod(kpis.current.period)}, o valor de
+            {" "}
+            {formatUnitCost(kpis.current.unitCost, metric, currency, formatCurrency, formatPercent)}
+            {" "}
+            {currentStatus === "above" ? "ultrapassou" : "ficou abaixo de"}
+            {" "}
+            {formatUnitCost(
+              currentStatus === "above"
+                ? metric.thresholds?.upperBound ?? null
+                : metric.thresholds?.lowerBound ?? null,
+              metric,
+              currency,
+              formatCurrency,
+              formatPercent,
+            )}
+            .
+          </AlertDescription>
+        </Alert>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Skeleton className="h-24" />
@@ -146,7 +241,12 @@ export function UnitMetricDetail({ metric }: Props) {
           <Skeleton className="h-24" />
         </div>
       ) : (
-        <KpiCards kpis={kpis} metric={metric} currency={currency} />
+        <KpiCards
+          kpis={kpis}
+          metric={metric}
+          currency={currency}
+          currentStatus={currentStatus}
+        />
       )}
 
       <Card>
@@ -180,11 +280,20 @@ function KpiCards({
   kpis,
   metric,
   currency,
+  currentStatus,
 }: {
   kpis: ReturnType<typeof computeKpis>;
   metric: UnitMetric;
   currency: string;
+  currentStatus: ThresholdStatus;
 }) {
+  const showThresholdBadge = hasThresholds(metric) && kpis.current != null;
+  const breachBadgeClass =
+    currentStatus === "above"
+      ? "text-destructive border-destructive/30 bg-destructive/5"
+      : currentStatus === "below"
+        ? "text-destructive border-destructive/30 bg-destructive/5"
+        : "text-primary border-primary/30 bg-primary/5";
   const fmt = (v: number | null) =>
     formatUnitCost(v, metric, currency, formatCurrency, formatPercent);
   const trendUp = kpis.delta !== null && kpis.delta > 0;
@@ -204,6 +313,27 @@ function KpiCards({
           <div className="text-xs text-muted-foreground mt-0.5">
             {kpis.current ? formatPeriod(kpis.current.period) : "—"}
           </div>
+          {showThresholdBadge && (
+            <Badge
+              variant="outline"
+              className={`mt-2 text-[10px] px-1.5 py-0 gap-1 ${breachBadgeClass}`}
+              data-testid="kpi-threshold-badge"
+            >
+              {currentStatus === "above" ? (
+                <>
+                  <ArrowUp className="w-2.5 h-2.5" /> Acima do limite
+                </>
+              ) : currentStatus === "below" ? (
+                <>
+                  <ArrowDown className="w-2.5 h-2.5" /> Abaixo do limite
+                </>
+              ) : (
+                <>
+                  <Minus className="w-2.5 h-2.5" /> Dentro do alvo
+                </>
+              )}
+            </Badge>
+          )}
         </CardContent>
       </Card>
       <Card>
@@ -346,6 +476,36 @@ function UnitCostChart({
             opacity={0.4}
             radius={[2, 2, 0, 0]}
           />
+          {metric.thresholds?.target != null && (
+            <ReferenceLine
+              yAxisId="left"
+              y={metric.thresholds.target}
+              stroke="hsl(var(--primary))"
+              strokeDasharray="4 4"
+              ifOverflow="extendDomain"
+              label={{ value: "Alvo", position: "right", fill: "hsl(var(--primary))", fontSize: 10 }}
+            />
+          )}
+          {metric.thresholds?.upperBound != null && (
+            <ReferenceLine
+              yAxisId="left"
+              y={metric.thresholds.upperBound}
+              stroke="hsl(var(--destructive))"
+              strokeDasharray="2 4"
+              ifOverflow="extendDomain"
+              label={{ value: "Máx", position: "right", fill: "hsl(var(--destructive))", fontSize: 10 }}
+            />
+          )}
+          {metric.thresholds?.lowerBound != null && (
+            <ReferenceLine
+              yAxisId="left"
+              y={metric.thresholds.lowerBound}
+              stroke="hsl(var(--destructive))"
+              strokeDasharray="2 4"
+              ifOverflow="extendDomain"
+              label={{ value: "Mín", position: "right", fill: "hsl(var(--destructive))", fontSize: 10 }}
+            />
+          )}
           <Line
             yAxisId="left"
             type="monotone"

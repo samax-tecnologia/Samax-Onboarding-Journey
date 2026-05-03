@@ -15,10 +15,13 @@ import { downloadCsv, toCsv, todayStamp } from "@/lib/export";
 import { useUnitEconomics, type UnitMetric } from "@/lib/unit-economics-store";
 import {
   buildUnitSeries,
+  evaluateThreshold,
   formatUnitCost,
   type FocusPoint,
 } from "@/lib/unit-economics-compute";
 import { formatCurrency, formatPercent, formatPeriod } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { normalizePeriod } from "@/lib/csv-parse";
 
 type Props = {
@@ -132,43 +135,61 @@ export function DataPointTable({ metric, points, currency }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {series.map((r) => (
-              <TableRow key={r.period} data-testid={`period-row-${r.period}`}>
-                <TableCell className="font-medium">{formatPeriod(r.period)}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatCurrency(r.cost, currency)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Input
-                    key={`${r.period}:${r.volume ?? ""}`}
-                    className="h-8 w-32 ml-auto text-right"
-                    type="number"
-                    step="any"
-                    min="0"
-                    defaultValue={r.volume ?? ""}
-                    onBlur={(e) => onEdit(r.period, e.target.value)}
-                    placeholder="—"
-                    data-testid={`period-value-${r.period}`}
-                  />
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatUnitCost(r.unitCost, metric, currency, formatCurrency, formatPercent)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {r.volume !== null && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => removeDataPoint(metric.id, r.period)}
-                      title="Remover valor"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+            {series.map((r) => {
+              const status = evaluateThreshold(r.unitCost, metric.thresholds);
+              const breach = status === "above" || status === "below";
+              return (
+                <TableRow
+                  key={r.period}
+                  data-testid={`period-row-${r.period}`}
+                  data-threshold-status={status}
+                  className={cn(breach && "bg-destructive/5")}
+                >
+                  <TableCell className="font-medium">{formatPeriod(r.period)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatCurrency(r.cost, currency)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      key={`${r.period}:${r.volume ?? ""}`}
+                      className="h-8 w-32 ml-auto text-right"
+                      type="number"
+                      step="any"
+                      min="0"
+                      defaultValue={r.volume ?? ""}
+                      onBlur={(e) => onEdit(r.period, e.target.value)}
+                      placeholder="—"
+                      data-testid={`period-value-${r.period}`}
+                    />
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "text-right tabular-nums",
+                      breach && "text-destructive font-medium",
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-1 justify-end">
+                      {status === "above" && <ArrowUp className="w-3 h-3" aria-label="Acima do limite" />}
+                      {status === "below" && <ArrowDown className="w-3 h-3" aria-label="Abaixo do limite" />}
+                      {formatUnitCost(r.unitCost, metric, currency, formatCurrency, formatPercent)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {r.volume !== null && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => removeDataPoint(metric.id, r.period)}
+                        title="Remover valor"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {orphanPeriods.map((p) => (
               <TableRow key={p} className="text-muted-foreground">
                 <TableCell>{formatPeriod(p)}</TableCell>

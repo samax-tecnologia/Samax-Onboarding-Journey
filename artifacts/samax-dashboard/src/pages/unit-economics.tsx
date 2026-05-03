@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Plus, Upload, Sigma, Gauge } from "lucide-react";
 import { useUnitEconomics } from "@/lib/unit-economics-store";
+import type { ThresholdStatus } from "@/lib/unit-economics-compute";
+import { AlertTriangle } from "lucide-react";
 import { MetricEditor } from "@/components/unit-economics/MetricEditor";
 import { CsvImportDialog } from "@/components/unit-economics/CsvImportDialog";
 import { UnitMetricDetail } from "@/components/unit-economics/UnitMetricDetail";
@@ -19,6 +21,13 @@ export default function UnitEconomicsPage() {
   // metric yet — so we open the editor first and remember to chain the CSV
   // dialog right after the metric is created.
   const [importAfterCreate, setImportAfterCreate] = useState(false);
+  // Breach status reported by the detail view for each metric the user has
+  // visited in this session. Used by the sidebar to display the
+  // "Fora do alvo" badge using the real unit-cost evaluation.
+  const [breachByMetric, setBreachByMetric] = useState<Record<string, ThresholdStatus>>({});
+  const handleBreachChange = useCallback((metricId: string, status: ThresholdStatus) => {
+    setBreachByMetric((prev) => (prev[metricId] === status ? prev : { ...prev, [metricId]: status }));
+  }, []);
 
   // Keep a valid selection at all times.
   useEffect(() => {
@@ -75,10 +84,15 @@ export default function UnitEconomicsPage() {
               selectedId={selectedId}
               onSelect={setSelectedId}
               getData={getData}
+              breachByMetric={breachByMetric}
             />
             <div>
               {selected ? (
-                <UnitMetricDetail key={selected.id} metric={selected} />
+                <UnitMetricDetail
+                  key={selected.id}
+                  metric={selected}
+                  onBreachChange={handleBreachChange}
+                />
               ) : (
                 <Card>
                   <CardContent className="p-10 text-center text-sm text-muted-foreground">
@@ -116,11 +130,13 @@ function MetricList({
   selectedId,
   onSelect,
   getData,
+  breachByMetric,
 }: {
   metrics: ReturnType<typeof useUnitEconomics>["metrics"];
   selectedId: string | null;
   onSelect: (id: string) => void;
   getData: ReturnType<typeof useUnitEconomics>["getData"];
+  breachByMetric: Record<string, ThresholdStatus>;
 }) {
   return (
     <Card>
@@ -130,6 +146,12 @@ function MetricList({
             const data = getData(m.id);
             const periodCount = Object.keys(data).length;
             const isActive = m.id === selectedId;
+            // Breach status comes from the detail view's evaluation against
+            // the real unit cost (cost / volume). Metrics the user hasn't
+            // visited yet won't have an entry here, so no badge is shown until
+            // we have authoritative data.
+            const status = breachByMetric[m.id];
+            const breach = status === "above" || status === "below" ? status : null;
             return (
               <li key={m.id}>
                 <button
@@ -161,6 +183,16 @@ function MetricList({
                     {m.format === "percent" && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                         %
+                      </Badge>
+                    )}
+                    {breach && (
+                      <Badge
+                        variant="destructive"
+                        className="text-[10px] px-1.5 py-0 gap-1"
+                        data-testid={`metric-list-breach-${m.id}`}
+                      >
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        Fora do alvo
                       </Badge>
                     )}
                   </div>

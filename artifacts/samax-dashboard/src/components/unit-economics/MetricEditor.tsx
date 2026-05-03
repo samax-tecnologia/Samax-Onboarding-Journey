@@ -67,6 +67,9 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
   const [providers, setProviders] = useState("");
   const [teams, setTeams] = useState("");
   const [products, setProducts] = useState("");
+  const [thresholdTarget, setThresholdTarget] = useState("");
+  const [thresholdUpper, setThresholdUpper] = useState("");
+  const [thresholdLower, setThresholdLower] = useState("");
 
   // Reset whenever the dialog opens or the "editing" target changes.
   useEffect(() => {
@@ -82,6 +85,10 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       setProviders((editing.numerator.providers ?? []).join(", "));
       setTeams((editing.numerator.teams ?? []).join(", "));
       setProducts((editing.numerator.products ?? []).join(", "));
+      const t = editing.thresholds;
+      setThresholdTarget(t?.target != null ? String(t.target) : "");
+      setThresholdUpper(t?.upperBound != null ? String(t.upperBound) : "");
+      setThresholdLower(t?.lowerBound != null ? String(t.lowerBound) : "");
     } else {
       setTemplateId("custom");
       setName("");
@@ -93,6 +100,9 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       setProviders("");
       setTeams("");
       setProducts("");
+      setThresholdTarget("");
+      setThresholdUpper("");
+      setThresholdLower("");
     }
   }, [open, editing]);
 
@@ -117,6 +127,55 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
       toast({ title: "Informe o rótulo da unidade", variant: "destructive" });
       return;
     }
+    const parseOpt = (s: string, label: string): number | undefined | "invalid" => {
+      const trimmed = s.trim();
+      if (!trimmed) return undefined;
+      const n = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(n)) {
+        toast({
+          title: `Valor inválido em "${label}"`,
+          description: "Use apenas números (ex.: 12,5 ou 0.18).",
+          variant: "destructive",
+        });
+        return "invalid";
+      }
+      return n;
+    };
+    const target = parseOpt(thresholdTarget, "Alvo");
+    const upperBound = parseOpt(thresholdUpper, "Limite superior");
+    const lowerBound = parseOpt(thresholdLower, "Limite inferior");
+    if (target === "invalid" || upperBound === "invalid" || lowerBound === "invalid") return;
+    if (
+      typeof lowerBound === "number" &&
+      typeof upperBound === "number" &&
+      lowerBound > upperBound
+    ) {
+      toast({
+        title: "Limites inválidos",
+        description: "O limite inferior precisa ser menor ou igual ao limite superior.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      typeof target === "number" &&
+      ((typeof lowerBound === "number" && target < lowerBound) ||
+        (typeof upperBound === "number" && target > upperBound))
+    ) {
+      toast({
+        title: "Alvo fora dos limites",
+        description: "O alvo precisa estar entre os limites inferior e superior.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const t = target as number | undefined;
+    const u = upperBound as number | undefined;
+    const l = lowerBound as number | undefined;
+    const thresholds =
+      t === undefined && u === undefined && l === undefined
+        ? undefined
+        : { target: t, upperBound: u, lowerBound: l };
     const saved = upsertMetric({
       id: editing?.id,
       name: name.trim(),
@@ -131,6 +190,7 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
         teams: csvList(teams),
         products: csvList(products),
       },
+      thresholds,
     });
     toast({ title: editing ? "Métrica atualizada" : "Métrica criada" });
     onOpenChange(false);
@@ -257,6 +317,52 @@ export function MetricEditor({ open, onOpenChange, editing, onSaved }: Props) {
                 Métricas diárias rateiam o custo mensal pelos dias do mês para calcular o custo unitário
                 por dia.
               </p>
+            </div>
+          </div>
+
+          <div className="rounded-md border p-3 space-y-3">
+            <div>
+              <div className="text-sm font-medium">Limites e alvo</div>
+              <p className="text-xs text-muted-foreground">
+                Defina valores de referência para o custo unitário. Quando o último período ultrapassar
+                o limite superior ou cair abaixo do limite inferior, a métrica é marcada como
+                <em> fora do alvo</em> e uma notificação é disparada.
+                {format === "percent" && (
+                  <> Para métricas percentuais, informe o valor como razão (ex.: 0,18 = 18%).</>
+                )}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Limite inferior</Label>
+                <Input
+                  value={thresholdLower}
+                  onChange={(e) => setThresholdLower(e.target.value)}
+                  placeholder={format === "percent" ? "0,05" : "10"}
+                  inputMode="decimal"
+                  data-testid="metric-threshold-lower"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Alvo</Label>
+                <Input
+                  value={thresholdTarget}
+                  onChange={(e) => setThresholdTarget(e.target.value)}
+                  placeholder={format === "percent" ? "0,12" : "20"}
+                  inputMode="decimal"
+                  data-testid="metric-threshold-target"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Limite superior</Label>
+                <Input
+                  value={thresholdUpper}
+                  onChange={(e) => setThresholdUpper(e.target.value)}
+                  placeholder={format === "percent" ? "0,18" : "30"}
+                  inputMode="decimal"
+                  data-testid="metric-threshold-upper"
+                />
+              </div>
             </div>
           </div>
 
