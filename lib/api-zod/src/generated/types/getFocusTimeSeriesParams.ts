@@ -7,6 +7,7 @@
  */
 import type { CostTypeParamParameter } from "./costTypeParamParameter";
 import type { EndDateParamParameter } from "./endDateParamParameter";
+import type { GetFocusTimeSeriesGranularity } from "./getFocusTimeSeriesGranularity";
 import type { GetFocusTimeSeriesMonths } from "./getFocusTimeSeriesMonths";
 import type { ProductsParamParameter } from "./productsParamParameter";
 import type { ProvidersParamParameter } from "./providersParamParameter";
@@ -18,6 +19,16 @@ export type GetFocusTimeSeriesParams = {
    * Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.
    */
   months?: GetFocusTimeSeriesMonths;
+  /**
+ * Bucket size for emitted points. "month" (default) emits one
+YYYY-MM point per month in the window. "day" emits one
+YYYY-MM-DD point per day, with each month's cost prorated
+uniformly across the days of that month. momDelta and the
+"previousRangeTotal" still describe period-over-period at the
+chosen granularity.
+
+ */
+  granularity?: GetFocusTimeSeriesGranularity;
   /**
    * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
    */

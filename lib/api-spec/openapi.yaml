@@ -75,6 +75,19 @@ paths:
           schema:
             type: integer
             enum: [3, 6, 12]
+        - in: query
+          name: granularity
+          required: false
+          description: |
+            Bucket size for emitted points. "month" (default) emits one
+            YYYY-MM point per month in the window. "day" emits one
+            YYYY-MM-DD point per day, with each month's cost prorated
+            uniformly across the days of that month. momDelta and the
+            "previousRangeTotal" still describe period-over-period at the
+            chosen granularity.
+          schema:
+            type: string
+            enum: [month, day]
         - $ref: "#/components/parameters/StartDateParam"
         - $ref: "#/components/parameters/EndDateParam"
         - $ref: "#/components/parameters/ProvidersParam"

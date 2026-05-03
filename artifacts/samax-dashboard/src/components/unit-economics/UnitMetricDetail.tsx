@@ -65,6 +65,7 @@ export function UnitMetricDetail({ metric, onBreachChange }: Props) {
   const mTeams = intersect(activeTeams, metric.numerator.teams);
   const mProducts = intersect(activeProducts, metric.numerator.products);
 
+  const granularity = metric.granularity ?? "month";
   const params =
     filters.range.mode === "preset"
       ? {
@@ -73,6 +74,7 @@ export function UnitMetricDetail({ metric, onBreachChange }: Props) {
           teams: mTeams?.join(","),
           products: mProducts?.join(","),
           costType: common.costType,
+          granularity,
         }
       : {
           startDate: common.startDate,
@@ -81,6 +83,7 @@ export function UnitMetricDetail({ metric, onBreachChange }: Props) {
           teams: mTeams?.join(","),
           products: mProducts?.join(","),
           costType: common.costType,
+          granularity,
         };
   const { data, isLoading, isError } = useGetFocusTimeSeries(params);
 
@@ -95,8 +98,8 @@ export function UnitMetricDetail({ metric, onBreachChange }: Props) {
   );
   const denominator = getData(metric.id);
   const series = useMemo(
-    () => buildUnitSeries(points, denominator, metric.granularity ?? "month"),
-    [points, denominator, metric.granularity],
+    () => buildUnitSeries(points, denominator),
+    [points, denominator],
   );
   const kpis = useMemo(() => computeKpis(series), [series]);
   const currency = data?.currency ?? "USD";

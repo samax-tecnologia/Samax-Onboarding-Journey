@@ -214,10 +214,11 @@ router.get("/focus/timeseries", async (req, res) => {
   filters.endDate = end;
 
   const inRange = applyFilters(ds.monthlyRows, filters);
+  const granularity: "month" | "day" =
+    parsed.data.granularity === "day" ? "day" : "month";
 
-  // Group by YYYY-MM and provider
-  const buckets = new Map<string, { total: number; byProvider: Record<string, number> }>();
-  // Initialize empty months so the chart always has a continuous axis
+  // Group by YYYY-MM and provider first (the underlying data is monthly).
+  const monthBuckets = new Map<string, { total: number; byProvider: Record<string, number> }>();
   for (
     let cursor = new Date(start);
     cursor < end;
@@ -226,43 +227,126 @@ router.get("/focus/timeseries", async (req, res) => {
     const key = ymKey(cursor);
     const byProvider: Record<string, number> = {};
     for (const p of ALL_PROVIDERS) byProvider[p] = 0;
-    buckets.set(key, { total: 0, byProvider });
+    monthBuckets.set(key, { total: 0, byProvider });
   }
 
   for (const r of inRange) {
     const key = ymKey(r.ChargePeriodStart);
-    const bucket = buckets.get(key);
+    const bucket = monthBuckets.get(key);
     if (!bucket) continue;
     const c = costOf(r, filters.costType);
     bucket.total += c;
     bucket.byProvider[r.ProviderName] = (bucket.byProvider[r.ProviderName] ?? 0) + c;
   }
 
-  const points = [...buckets.entries()].map(([period, b]) => ({
-    period,
-    total: round2(b.total),
-    byProvider: Object.fromEntries(
-      Object.entries(b.byProvider).map(([k, v]) => [k, round2(v)]),
-    ),
-  }));
+  const points: Array<{
+    period: string;
+    total: number;
+    byProvider: Record<string, number>;
+  }> = [];
+
+  if (granularity === "day") {
+    // Expand each month into one point per day, prorated uniformly across the
+    // days of that month. The dataset is monthly-aggregated, so per-day
+    // breakdown is necessarily a uniform allocation.
+    for (const [period, b] of monthBuckets.entries()) {
+      const [yStr, mStr] = period.split("-");
+      const y = Number(yStr);
+      const mo = Number(mStr);
+      const monthStart = new Date(Date.UTC(y, mo - 1, 1));
+      const monthEnd = new Date(Date.UTC(y, mo, 1));
+      const daysInMonth = Math.round(
+        (monthEnd.getTime() - monthStart.getTime()) / 86_400_000,
+      );
+      if (daysInMonth <= 0) continue;
+      const dayTotal = b.total / daysInMonth;
+      const dayByProvider: Record<string, number> = {};
+      for (const [k, v] of Object.entries(b.byProvider)) {
+        dayByProvider[k] = v / daysInMonth;
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const day = new Date(Date.UTC(y, mo - 1, d));
+        // Respect the requested window: skip days outside [start, end).
+        if (day < start || day >= end) continue;
+        const dayKey = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        points.push({
+          period: dayKey,
+          total: round2(dayTotal),
+          byProvider: Object.fromEntries(
+            Object.entries(dayByProvider).map(([k, v]) => [k, round2(v)]),
+          ),
+        });
+      }
+    }
+    points.sort((a, b) => (a.period < b.period ? -1 : a.period > b.period ? 1 : 0));
+  } else {
+    for (const [period, b] of monthBuckets.entries()) {
+      points.push({
+        period,
+        total: round2(b.total),
+        byProvider: Object.fromEntries(
+          Object.entries(b.byProvider).map(([k, v]) => [k, round2(v)]),
+        ),
+      });
+    }
+  }
 
   const totalRange = points.reduce((a, p) => a + p.total, 0);
 
-  // Previous range of same length for comparison
-  const windowMonths = Math.max(
-    1,
-    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-      (end.getUTCMonth() - start.getUTCMonth()),
-  );
-  const prevStart = new Date(
-    Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - windowMonths, 1),
-  );
+  // Previous range of same length for comparison.
+  // For month granularity we shift by whole months; for day granularity we
+  // shift by the same number of days so the comparison window matches what
+  // the user is actually looking at.
+  let prevStart: Date;
+  let prevEnd: Date;
+  if (granularity === "day") {
+    const windowDays = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / 86_400_000),
+    );
+    prevStart = new Date(start.getTime() - windowDays * 86_400_000);
+    prevEnd = start;
+  } else {
+    const windowMonths = Math.max(
+      1,
+      (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+        (end.getUTCMonth() - start.getUTCMonth()),
+    );
+    prevStart = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth() - windowMonths, 1),
+    );
+    prevEnd = start;
+  }
   const prevRows = applyFilters(ds.monthlyRows, {
     ...filters,
     startDate: prevStart,
-    endDate: start,
+    endDate: prevEnd,
   });
-  const previousRangeTotal = sumCost(prevRows, filters.costType);
+  // For day-granularity windows the previous range may overlap a partial
+  // month. The underlying rows are monthly buckets, so prorate any month
+  // that is only partially inside the previous window.
+  let previousRangeTotal = 0;
+  if (granularity === "day") {
+    for (const r of prevRows) {
+      const monthStart = r.ChargePeriodStart;
+      const monthEnd = new Date(
+        Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1),
+      );
+      const daysInMonth = Math.round(
+        (monthEnd.getTime() - monthStart.getTime()) / 86_400_000,
+      );
+      const overlapStart = monthStart > prevStart ? monthStart : prevStart;
+      const overlapEnd = monthEnd < prevEnd ? monthEnd : prevEnd;
+      const overlapDays = Math.max(
+        0,
+        Math.round((overlapEnd.getTime() - overlapStart.getTime()) / 86_400_000),
+      );
+      if (overlapDays === 0 || daysInMonth === 0) continue;
+      previousRangeTotal += costOf(r, filters.costType) * (overlapDays / daysInMonth);
+    }
+  } else {
+    previousRangeTotal = sumCost(prevRows, filters.costType);
+  }
 
   const last = points[points.length - 1];
   const prev = points[points.length - 2];

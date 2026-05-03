@@ -119,6 +119,12 @@ export const GetFocusTimeSeriesQueryParams = zod.object({
     .describe(
       "Convenience preset (3, 6 or 12 trailing months). Ignored when both startDate and endDate are provided.",
     ),
+  granularity: zod
+    .enum(["month", "day"])
+    .optional()
+    .describe(
+      'Bucket size for emitted points. \"month\" (default) emits one\nYYYY-MM point per month in the window. \"day\" emits one\nYYYY-MM-DD point per day, with each month\'s cost prorated\nuniformly across the days of that month. momDelta and the\n\"previousRangeTotal\" still describe period-over-period at the\nchosen granularity.\n',
+    ),
   startDate: zod.coerce
     .string()
     .optional()

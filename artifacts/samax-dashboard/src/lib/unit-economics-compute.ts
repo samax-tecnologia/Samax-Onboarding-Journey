@@ -25,52 +25,23 @@ export type UnitKpis = {
 /**
  * Build a per-period unit cost series from FOCUS spend points and a metric's denominator data.
  * - The numerator is `point.total` (already filtered server-side by the active dashboard filter
- *   intersected with the metric's optional providers/teams/products scope when those are set).
- * - For "month" granularity (default), volume comes from `denominator[YYYY-MM]`.
- * - For "day" granularity, volume comes from `denominator[YYYY-MM-DD]` and the matching
- *   month's cost is allocated proportionally across the days in that month
- *   (cost_for_day = monthly_cost / daysInMonth).
+ *   intersected with the metric's optional providers/teams/products scope when those are set,
+ *   and already bucketed at the requested granularity — month or day).
+ * - The denominator is keyed by the same period format the server returned
+ *   ("YYYY-MM" for monthly metrics, "YYYY-MM-DD" for daily metrics).
  */
 export function buildUnitSeries(
   points: FocusPoint[],
   denominator: Record<string, number>,
-  granularity: "month" | "day" = "month",
 ): UnitSeriesRow[] {
-  if (granularity === "month") {
-    return points.map((p) => {
-      const volume = denominator[p.period];
-      const hasVolume = typeof volume === "number" && volume > 0;
-      return {
-        period: p.period,
-        cost: p.total,
-        volume: hasVolume ? volume : null,
-        unitCost: hasVolume ? p.total / volume : null,
-      };
-    });
-  }
-
-  // Day granularity: index monthly cost by month, then emit one row per provided day.
-  const costByMonth = new Map<string, number>();
-  for (const p of points) costByMonth.set(p.period, p.total);
-
-  const dayKeys = Object.keys(denominator).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k));
-  dayKeys.sort();
-
-  return dayKeys.map((day) => {
-    const month = day.slice(0, 7);
-    const [yStr, mStr] = month.split("-");
-    const y = Number(yStr);
-    const mo = Number(mStr);
-    const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-    const monthlyCost = costByMonth.get(month) ?? 0;
-    const dayCost = daysInMonth > 0 ? monthlyCost / daysInMonth : 0;
-    const volume = denominator[day];
+  return points.map((p) => {
+    const volume = denominator[p.period];
     const hasVolume = typeof volume === "number" && volume > 0;
     return {
-      period: day,
-      cost: dayCost,
+      period: p.period,
+      cost: p.total,
       volume: hasVolume ? volume : null,
-      unitCost: hasVolume && dayCost > 0 ? dayCost / volume : null,
+      unitCost: hasVolume ? p.total / volume : null,
     };
   });
 }

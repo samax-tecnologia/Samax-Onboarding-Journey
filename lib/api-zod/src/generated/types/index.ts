@@ -42,6 +42,7 @@ export * from "./getFocusBreakdownDimension";
 export * from "./getFocusBreakdownParams";
 export * from "./getFocusSavingsParams";
 export * from "./getFocusSummaryParams";
+export * from "./getFocusTimeSeriesGranularity";
 export * from "./getFocusTimeSeriesMonths";
 export * from "./getFocusTimeSeriesParams";
 export * from "./healthStatus";

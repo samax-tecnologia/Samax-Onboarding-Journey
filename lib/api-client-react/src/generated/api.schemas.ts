@@ -667,6 +667,16 @@ export type GetFocusTimeSeriesParams = {
    */
   months?: GetFocusTimeSeriesMonths;
   /**
+ * Bucket size for emitted points. "month" (default) emits one
+YYYY-MM point per month in the window. "day" emits one
+YYYY-MM-DD point per day, with each month's cost prorated
+uniformly across the days of that month. momDelta and the
+"previousRangeTotal" still describe period-over-period at the
+chosen granularity.
+
+ */
+  granularity?: GetFocusTimeSeriesGranularity;
+  /**
    * Inclusive ISO date (YYYY-MM-DD) for ChargePeriodStart
    */
   startDate?: StartDateParamParameter;
@@ -699,6 +709,14 @@ export const GetFocusTimeSeriesMonths = {
   NUMBER_3: 3,
   NUMBER_6: 6,
   NUMBER_12: 12,
+} as const;
+
+export type GetFocusTimeSeriesGranularity =
+  (typeof GetFocusTimeSeriesGranularity)[keyof typeof GetFocusTimeSeriesGranularity];
+
+export const GetFocusTimeSeriesGranularity = {
+  month: "month",
+  day: "day",
 } as const;
 
 export type GetFocusBreakdownParams = {

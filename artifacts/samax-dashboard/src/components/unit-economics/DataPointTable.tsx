@@ -37,8 +37,8 @@ export function DataPointTable({ metric, points, currency }: Props) {
 
   const granularity = metric.granularity ?? "month";
   const series = useMemo(
-    () => buildUnitSeries(points, denominator, granularity),
-    [points, denominator, granularity],
+    () => buildUnitSeries(points, denominator),
+    [points, denominator],
   );
 
   const [newPeriod, setNewPeriod] = useState("");
