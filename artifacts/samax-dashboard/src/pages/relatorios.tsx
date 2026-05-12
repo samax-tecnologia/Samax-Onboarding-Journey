@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useListOptimizationReports,
   useCreateOptimizationReport,
@@ -82,6 +82,7 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Upload,
 } from "lucide-react";
 import { customFetchUrl } from "@/lib/report-pdf-url";
 import { useUnitEconomics } from "@/lib/unit-economics-store";
@@ -1305,6 +1306,7 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [end, setEnd] = useState(def.end);
   const [mode, setMode] = useState<"focus" | "manual">("focus");
   const [entries, setEntries] = useState<ManualEntry[]>([emptyEntry()]);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1315,6 +1317,63 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     setEntries([emptyEntry()]);
     setLabel("Baseline 3M");
   }, [open, filters?.periodEnd]);
+
+  const handleCsvImport = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = (ev.target?.result as string) ?? "";
+      const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+      if (lines.length < 2) {
+        toast({ title: "CSV vazio ou sem dados", description: "O arquivo precisa ter pelo menos uma linha de dados além do cabeçalho.", variant: "destructive" });
+        return;
+      }
+      const sep = lines[0].includes(";") ? ";" : ",";
+      const headers = lines[0].split(sep).map((h) => h.trim().toLowerCase());
+      const provIdx = headers.indexOf("provider");
+      const svcIdx = headers.indexOf("service");
+      const valIdx = headers.indexOf("monthlyvalue");
+      if (provIdx === -1 || svcIdx === -1 || valIdx === -1) {
+        toast({
+          title: "Colunas não encontradas",
+          description: `O CSV precisa ter as colunas: provider, service, monthlyValue. Encontradas: ${headers.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      const parsed: ManualEntry[] = [];
+      const rowErrors: string[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(sep).map((c) => c.trim().replace(/^["']|["']$/g, ""));
+        const provider = cols[provIdx] ?? "";
+        const service = cols[svcIdx] ?? "";
+        const rawVal = cols[valIdx] ?? "";
+        const monthlyValue = parseFloat(rawVal.replace(",", "."));
+        if (!provider) { rowErrors.push(`Linha ${i + 1}: "provider" vazio`); continue; }
+        if (!service) { rowErrors.push(`Linha ${i + 1}: "service" vazio`); continue; }
+        if (isNaN(monthlyValue) || monthlyValue <= 0) { rowErrors.push(`Linha ${i + 1}: "monthlyValue" inválido (${rawVal})`); continue; }
+        parsed.push({ id: crypto.randomUUID(), provider, service, monthlyValue: String(monthlyValue) });
+      }
+      if (rowErrors.length > 0) {
+        toast({
+          title: `${rowErrors.length} linha(s) com erro`,
+          description: rowErrors.slice(0, 3).join(" · ") + (rowErrors.length > 3 ? ` e mais ${rowErrors.length - 3}…` : ""),
+          variant: "destructive",
+        });
+      }
+      if (parsed.length === 0) {
+        toast({ title: "Nenhuma linha válida importada", variant: "destructive" });
+        return;
+      }
+      setEntries(parsed);
+      toast({ title: `${parsed.length} linha(s) importadas do CSV` });
+    };
+    reader.onerror = () => {
+      toast({ title: "Erro ao ler o arquivo", description: "Não foi possível carregar o arquivo selecionado.", variant: "destructive" });
+      if (csvInputRef.current) csvInputRef.current.value = "";
+    };
+    reader.readAsText(file);
+    if (csvInputRef.current) csvInputRef.current.value = "";
+  };
 
   const updateEntry = (id: string, field: keyof ManualEntry, value: string) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
@@ -1487,14 +1546,35 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </TableBody>
             </Table>
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEntries((prev) => [...prev, emptyEntry()])}
-                data-testid="add-manual-entry"
-              >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar linha
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEntries((prev) => [...prev, emptyEntry()])}
+                  data-testid="add-manual-entry"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar linha
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => csvInputRef.current?.click()}
+                  data-testid="import-csv-button"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1" /> Importar CSV
+                </Button>
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv,.txt"
+                  className="hidden"
+                  data-testid="csv-file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCsvImport(file);
+                  }}
+                />
+              </div>
               <div className="text-sm text-muted-foreground text-right space-y-0.5">
                 <div>
                   Mensal:{" "}
