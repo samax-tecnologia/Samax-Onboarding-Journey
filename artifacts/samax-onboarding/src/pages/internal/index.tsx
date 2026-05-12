@@ -16,9 +16,13 @@ import {
   MessageSquare,
   Bot,
   BarChart3,
+  Calendar,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -26,10 +30,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { useJourney, PhaseStatus, type PreActivationFlags } from "@/lib/journey-store";
+import {
+  useJourney,
+  PhaseStatus,
+  type PreActivationFlags,
+  type EngagementMilestones,
+  type ManualBaselineEntry,
+} from "@/lib/journey-store";
 import { useListBaselines } from "@workspace/api-client-react";
 import { useTenant } from "@/lib/tenant-store";
 import { PHASES, MILESTONES, OPPORTUNITIES } from "@/lib/constants";
@@ -402,61 +413,399 @@ function HealthSummary() {
 // =============================================================================
 // Goal calculator (bound to store)
 // =============================================================================
-function GoalCalculator() {
+function ConfiguracaoEngajamento() {
   const { state, actions, selectors } = useJourney();
+  const { customerProfile: p, engagementMilestones: m, manualBaseline: mb } = state;
   const target = selectors.getMetaMinima();
-  const p = state.customerProfile;
+  const totalBaseline = mb.entries.reduce((acc, e) => acc + e.monthlyValue, 0);
 
   return (
-    <Card className="mb-6">
-      <CardContent className="p-5">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-1">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">
-              Cálculo da meta de 1º valor
-            </p>
-            <h2 className="text-xl font-semibold tracking-tight">{formatBRL(target)} / ano</h2>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-md">
-              Mínimo entre 10% do spend anual e 2x o contrato anual. Editar aqui atualiza a meta exibida ao cliente.
-            </p>
-          </div>
-          <div className="lg:w-80 bg-muted/40 rounded-lg p-4 border space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="contract" className="text-xs text-muted-foreground">Contrato anual</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">R$</span>
-                  <Input
-                    id="contract"
-                    type="number"
-                    className="h-8 text-sm pl-8"
-                    value={p.contractAnnual}
-                    onChange={(e) => actions.updateCustomerProfile({ contractAnnual: Number(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="spend" className="text-xs text-muted-foreground">Spend anual</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">R$</span>
-                  <Input
-                    id="spend"
-                    type="number"
-                    className="h-8 text-sm pl-8"
-                    value={p.spendAnnual}
-                    onChange={(e) => actions.updateCustomerProfile({ spendAnnual: Number(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-            </div>
-            <Separator />
-            <div className="text-xs space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">10% do spend:</span><span className="tabular-nums">{formatBRL(p.spendAnnual * 0.1)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">2x contrato:</span><span className="tabular-nums">{formatBRL(p.contractAnnual * 2)}</span></div>
-              <div className="flex justify-between font-semibold text-primary pt-1 border-t"><span>Meta mínima:</span><span className="tabular-nums">{formatBRL(target)}</span></div>
-            </div>
-          </div>
+    <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+      <CardHeader className="pb-3 border-b border-amber-500/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Configuração do Engajamento</CardTitle>
+          <Badge
+            variant="outline"
+            className="text-[10px] text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 gap-1"
+          >
+            <Eye className="w-3 h-3" /> Apenas consultor
+          </Badge>
         </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <Tabs defaultValue="milestones">
+          <TabsList className="mb-4">
+            <TabsTrigger value="milestones" className="gap-1.5">
+              <Calendar className="w-3.5 h-3.5" /> Datas Marco
+            </TabsTrigger>
+            <TabsTrigger value="profile">Perfil do Cliente</TabsTrigger>
+            <TabsTrigger value="baseline">Baseline Manual</TabsTrigger>
+          </TabsList>
+
+          {/* ── Tab 1: Datas Marco ─────────────────────────────────────── */}
+          <TabsContent value="milestones">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Diagnóstico realizado</Label>
+                <Input
+                  type="date"
+                  value={m.diagnostico}
+                  onChange={(e) => actions.setEngagementMilestones({ diagnostico: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Assinatura do contrato</Label>
+                <Input
+                  type="date"
+                  value={m.assinatura}
+                  onChange={(e) => actions.setEngagementMilestones({ assinatura: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Kick-off</Label>
+                <Input
+                  type="date"
+                  value={m.kickoff}
+                  onChange={(e) => {
+                    actions.setEngagementMilestones({ kickoff: e.target.value });
+                    actions.updateCustomerProfile({ kickoffDate: e.target.value });
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Definição do baseline</Label>
+                <Input
+                  type="date"
+                  value={m.baselineDefinition}
+                  onChange={(e) => actions.setEngagementMilestones({ baselineDefinition: e.target.value })}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3">
+              Essas datas aparecem na tela do cliente em "Você chegou até aqui".
+            </p>
+          </TabsContent>
+
+          {/* ── Tab 2: Perfil do Cliente ───────────────────────────────── */}
+          <TabsContent value="profile">
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Cliente
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome do contato</Label>
+                    <Input
+                      value={p.name}
+                      placeholder="Ex: Luana"
+                      onChange={(e) => actions.updateCustomerProfile({ name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Empresa</Label>
+                    <Input
+                      value={p.company}
+                      placeholder="Ex: Acme Cloud"
+                      onChange={(e) => actions.updateCustomerProfile({ company: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Contrato e Meta
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Contrato anual (R$)</Label>
+                    <Input
+                      type="number"
+                      value={p.contractAnnual}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({ contractAnnual: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Spend anual (R$)</Label>
+                    <Input
+                      type="number"
+                      value={p.spendAnnual}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({ spendAnnual: Number(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-muted/40 rounded-md border text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">10% do spend:</span>
+                    <span className="tabular-nums">{formatBRL(p.spendAnnual * 0.1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">2× contrato:</span>
+                    <span className="tabular-nums">{formatBRL(p.contractAnnual * 2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-primary border-t pt-1 mt-1">
+                    <span>Meta mínima:</span>
+                    <span className="tabular-nums">{formatBRL(target)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Consultor
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome</Label>
+                    <Input
+                      value={p.consultant.name}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          consultant: { ...p.consultant, name: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Cargo</Label>
+                    <Input
+                      value={p.consultant.role}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          consultant: { ...p.consultant, role: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Próxima reunião</Label>
+                    <Input
+                      type="datetime-local"
+                      value={p.consultant.nextMeeting}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          consultant: { ...p.consultant, nextMeeting: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Ambiente
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Conectado desde</Label>
+                    <Input
+                      type="date"
+                      value={p.environment.connectedSince}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          environment: { ...p.environment, connectedSince: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Recursos monitorados</Label>
+                    <Input
+                      type="number"
+                      value={p.environment.resourcesMonitored}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          environment: {
+                            ...p.environment,
+                            resourcesMonitored: Number(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Spend mensal (R$)</Label>
+                    <Input
+                      type="number"
+                      value={p.environment.monthlySpend}
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          environment: {
+                            ...p.environment,
+                            monthlySpend: Number(e.target.value) || 0,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Provedores (separados por vírgula)</Label>
+                    <Input
+                      value={p.environment.providers.join(", ")}
+                      placeholder="AWS, Azure, GCP"
+                      onChange={(e) =>
+                        actions.updateCustomerProfile({
+                          environment: {
+                            ...p.environment,
+                            providers: e.target.value
+                              .split(",")
+                              .map((s) => s.trim())
+                              .filter(Boolean),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Tab 3: Baseline Manual ─────────────────────────────────── */}
+          <TabsContent value="baseline">
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Período analisado
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Início</Label>
+                    <Input
+                      type="date"
+                      value={mb.periodStart}
+                      onChange={(e) => actions.setManualBaselinePeriod({ periodStart: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Fim</Label>
+                    <Input
+                      type="date"
+                      value={mb.periodEnd}
+                      onChange={(e) => actions.setManualBaselinePeriod({ periodEnd: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Serviços / Categorias
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() =>
+                      actions.addManualBaselineEntry({ provider: "", service: "", monthlyValue: 0 })
+                    }
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar linha
+                  </Button>
+                </div>
+
+                {mb.entries.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    Nenhum serviço cadastrado. Clique em "Adicionar linha" para começar.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-[1fr_1fr_130px_36px] gap-2 px-1">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Provedor
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Serviço / Categoria
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground text-right pr-1">
+                        Valor/mês (R$)
+                      </span>
+                      <span />
+                    </div>
+                    {mb.entries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="grid grid-cols-[1fr_1fr_130px_36px] gap-2 items-center"
+                      >
+                        <Input
+                          className="h-8 text-sm"
+                          placeholder="AWS"
+                          value={entry.provider}
+                          onChange={(e) =>
+                            actions.updateManualBaselineEntry({ ...entry, provider: e.target.value })
+                          }
+                        />
+                        <Input
+                          className="h-8 text-sm"
+                          placeholder="EC2 / Compute"
+                          value={entry.service}
+                          onChange={(e) =>
+                            actions.updateManualBaselineEntry({ ...entry, service: e.target.value })
+                          }
+                        />
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-2 text-xs text-muted-foreground pointer-events-none">
+                            R$
+                          </span>
+                          <Input
+                            className="h-8 text-sm pl-8"
+                            type="number"
+                            placeholder="0"
+                            value={entry.monthlyValue || ""}
+                            onChange={(e) =>
+                              actions.updateManualBaselineEntry({
+                                ...entry,
+                                monthlyValue: Number(e.target.value) || 0,
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => actions.removeManualBaselineEntry(entry.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {mb.entries.length > 0 && (
+                <div className="rounded-md bg-primary/5 border border-primary/20 p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total do baseline manual</p>
+                    {mb.periodStart && mb.periodEnd && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {mb.periodStart} → {mb.periodEnd}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-semibold tabular-nums">{formatBRL(totalBaseline)}/mês</p>
+                    <p className="text-xs text-muted-foreground">{formatBRL(totalBaseline * 12)}/ano</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
@@ -734,7 +1083,7 @@ export default function InternalPage() {
       <PageHeader />
       <PreActivationChecklist />
       <HealthSummary />
-      <GoalCalculator />
+      <ConfiguracaoEngajamento />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2">

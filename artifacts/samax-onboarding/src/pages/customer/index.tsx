@@ -37,7 +37,6 @@ import { useJourney } from "@/lib/journey-store";
 import {
   CUSTOMER_STAGES,
   OPPORTUNITIES,
-  PRE_CONTRACT_MILESTONES,
   PHASES,
 } from "@/lib/constants";
 
@@ -408,25 +407,42 @@ function NextActionHero() {
 // Pre-contract Recap
 // =============================================================================
 function PreContractRecap() {
+  const { state } = useJourney();
+  const m = state.engagementMilestones;
+
+  const milestones: { id: string; label: string; date: string; icon: "search" | "file-check" | "target" | "calendar" }[] = [
+    { id: "diagnostico",       label: "Diagnóstico realizado",   date: m.diagnostico,       icon: "search" },
+    { id: "assinatura",        label: "Contrato assinado",       date: m.assinatura,        icon: "file-check" },
+    { id: "kickoff",           label: "Kick-off",                date: m.kickoff,           icon: "calendar" },
+    { id: "baselineDefinition",label: "Baseline definido",       date: m.baselineDefinition,icon: "target" },
+  ];
+
   return (
     <div className="mb-8">
       <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
         Você chegou até aqui
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {PRE_CONTRACT_MILESTONES.map((m) => {
-          const Icon = m.icon === "search" ? Search : m.icon === "file-check" ? FileCheck : Target;
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {milestones.map((ms) => {
+          const Icon =
+            ms.icon === "search"
+              ? Search
+              : ms.icon === "file-check"
+                ? FileCheck
+                : ms.icon === "calendar"
+                  ? CalendarDays
+                  : Target;
           return (
             <div
-              key={m.id}
+              key={ms.id}
               className="flex items-center gap-3 p-3 rounded-md border bg-card"
             >
               <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{m.label}</p>
-                <p className="text-xs text-muted-foreground">{formatDateBR(m.date)}</p>
+                <p className="text-sm font-medium text-foreground truncate">{ms.label}</p>
+                <p className="text-xs text-muted-foreground">{formatDateBR(ms.date)}</p>
               </div>
               <Check className="w-4 h-4 text-primary shrink-0 ml-auto" strokeWidth={3} />
             </div>

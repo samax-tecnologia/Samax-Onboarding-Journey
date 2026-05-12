@@ -27,6 +27,26 @@ export interface PreActivationFlags {
   bobBotConnectedAt: string | null;
 }
 
+export interface EngagementMilestones {
+  diagnostico: string;
+  assinatura: string;
+  kickoff: string;
+  baselineDefinition: string;
+}
+
+export interface ManualBaselineEntry {
+  id: string;
+  provider: string;
+  service: string;
+  monthlyValue: number;
+}
+
+export interface ManualBaseline {
+  periodStart: string;
+  periodEnd: string;
+  entries: ManualBaselineEntry[];
+}
+
 export interface JourneyState {
   completedTaskIds: string[];
   phaseStatuses: Record<string, PhaseStatus>;
@@ -38,6 +58,8 @@ export interface JourneyState {
   customerProfile: typeof CUSTOMER_PROFILE;
   notifications: JourneyNotification[];
   preActivationFlags: PreActivationFlags;
+  engagementMilestones: EngagementMilestones;
+  manualBaseline: ManualBaseline;
 }
 
 type Action =
@@ -52,7 +74,25 @@ type Action =
   | { type: "MARK_NOTIFICATION_READ"; payload: string }
   | { type: "MARK_ALL_READ" }
   | { type: "SET_PRE_ACTIVATION_FLAG"; payload: Partial<PreActivationFlags> }
+  | { type: "SET_ENGAGEMENT_MILESTONES"; payload: Partial<EngagementMilestones> }
+  | { type: "SET_MANUAL_BASELINE_PERIOD"; payload: { periodStart?: string; periodEnd?: string } }
+  | { type: "ADD_MANUAL_BASELINE_ENTRY"; payload: Omit<ManualBaselineEntry, "id"> }
+  | { type: "UPDATE_MANUAL_BASELINE_ENTRY"; payload: ManualBaselineEntry }
+  | { type: "REMOVE_MANUAL_BASELINE_ENTRY"; payload: string }
   | { type: "LOAD_STATE"; payload: JourneyState };
+
+const defaultEngagementMilestones: EngagementMilestones = {
+  diagnostico: "2026-03-10",
+  assinatura: "2026-04-01",
+  kickoff: CUSTOMER_PROFILE.kickoffDate,
+  baselineDefinition: "2026-04-29",
+};
+
+const defaultManualBaseline: ManualBaseline = {
+  periodStart: "",
+  periodEnd: "",
+  entries: [],
+};
 
 const defaultPreActivationFlags: PreActivationFlags = {
   contractSigned: false,
@@ -81,6 +121,8 @@ const defaultState: JourneyState = {
   customerProfile: CUSTOMER_PROFILE,
   notifications: [],
   preActivationFlags: defaultPreActivationFlags,
+  engagementMilestones: defaultEngagementMilestones,
+  manualBaseline: defaultManualBaseline,
 };
 
 const STORAGE_KEY_PREFIX = "samax-journey-v2";
@@ -183,6 +225,44 @@ function reduce(state: JourneyState, action: Action): JourneyState {
         ...state,
         preActivationFlags: { ...state.preActivationFlags, ...action.payload },
       };
+    case "SET_ENGAGEMENT_MILESTONES":
+      return {
+        ...state,
+        engagementMilestones: { ...state.engagementMilestones, ...action.payload },
+      };
+    case "SET_MANUAL_BASELINE_PERIOD":
+      return {
+        ...state,
+        manualBaseline: { ...state.manualBaseline, ...action.payload },
+      };
+    case "ADD_MANUAL_BASELINE_ENTRY": {
+      const entry: ManualBaselineEntry = { id: genId(), ...action.payload };
+      return {
+        ...state,
+        manualBaseline: {
+          ...state.manualBaseline,
+          entries: [...state.manualBaseline.entries, entry],
+        },
+      };
+    }
+    case "UPDATE_MANUAL_BASELINE_ENTRY":
+      return {
+        ...state,
+        manualBaseline: {
+          ...state.manualBaseline,
+          entries: state.manualBaseline.entries.map((e) =>
+            e.id === action.payload.id ? action.payload : e
+          ),
+        },
+      };
+    case "REMOVE_MANUAL_BASELINE_ENTRY":
+      return {
+        ...state,
+        manualBaseline: {
+          ...state.manualBaseline,
+          entries: state.manualBaseline.entries.filter((e) => e.id !== action.payload),
+        },
+      };
     case "LOAD_STATE":
       return action.payload;
     default:
@@ -213,6 +293,20 @@ function sanitize(raw: unknown): JourneyState {
         ? obj.preActivationFlags
         : {}),
     },
+    engagementMilestones: {
+      ...defaultEngagementMilestones,
+      ...(obj.engagementMilestones && typeof obj.engagementMilestones === "object"
+        ? obj.engagementMilestones
+        : {}),
+    },
+    manualBaseline: (() => {
+      const mb = obj.manualBaseline as ManualBaseline | undefined;
+      return {
+        periodStart: typeof mb?.periodStart === "string" ? mb.periodStart : "",
+        periodEnd: typeof mb?.periodEnd === "string" ? mb.periodEnd : "",
+        entries: Array.isArray(mb?.entries) ? mb!.entries : [],
+      };
+    })(),
   };
 }
 
@@ -369,6 +463,16 @@ export function useJourney() {
     markAllNotificationsRead: () => dispatch({ type: "MARK_ALL_READ" }),
     setPreActivationFlag: (payload: Partial<PreActivationFlags>) =>
       dispatch({ type: "SET_PRE_ACTIVATION_FLAG", payload }),
+    setEngagementMilestones: (payload: Partial<EngagementMilestones>) =>
+      dispatch({ type: "SET_ENGAGEMENT_MILESTONES", payload }),
+    setManualBaselinePeriod: (payload: { periodStart?: string; periodEnd?: string }) =>
+      dispatch({ type: "SET_MANUAL_BASELINE_PERIOD", payload }),
+    addManualBaselineEntry: (entry: Omit<ManualBaselineEntry, "id">) =>
+      dispatch({ type: "ADD_MANUAL_BASELINE_ENTRY", payload: entry }),
+    updateManualBaselineEntry: (entry: ManualBaselineEntry) =>
+      dispatch({ type: "UPDATE_MANUAL_BASELINE_ENTRY", payload: entry }),
+    removeManualBaselineEntry: (id: string) =>
+      dispatch({ type: "REMOVE_MANUAL_BASELINE_ENTRY", payload: id }),
   };
 
   const getMetaMinima = () => {
