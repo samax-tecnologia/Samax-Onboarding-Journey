@@ -101,8 +101,13 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
   let m: BaselineMetrics;
   let source: string;
 
-  const entries = parsed.data.entries;
-  if (entries && entries.length > 0) {
+  if (parsed.data.entries !== undefined) {
+    // Manual-entry mode: detected by presence of `entries` field; never load FOCUS data.
+    const entries = parsed.data.entries;
+    if (entries.length === 0) {
+      res.status(400).json({ error: "entries_empty" });
+      return;
+    }
     const s = start.getUTCFullYear() * 12 + start.getUTCMonth();
     const e = end.getUTCFullYear() * 12 + end.getUTCMonth();
     const months = Math.max(1, e - s);
@@ -130,6 +135,7 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
     }
     source = "manual-input";
   } else {
+    // FOCUS-data mode: compute metrics from FOCUS dataset.
     const ds = await loadDataset(tenantId, resolved.tenantDataSource);
     if (ds.monthlyRows.length === 0) {
       res.status(409).json({ error: "no_data" });
@@ -140,7 +146,7 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
       res.status(409).json({ error: "no_cost_in_period" });
       return;
     }
-    source = parsed.data.source ?? "focus";
+    source = "focus";
   }
 
   const setActive = parsed.data.setActive !== false;
