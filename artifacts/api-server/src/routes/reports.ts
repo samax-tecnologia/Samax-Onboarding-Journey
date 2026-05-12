@@ -124,6 +124,10 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
       byTeam: {},
       byProduct: {},
     };
+    if (m.totalCost <= 0) {
+      res.status(409).json({ error: "no_cost_in_period" });
+      return;
+    }
     source = "manual-input";
   } else {
     const ds = await loadDataset(tenantId, resolved.tenantDataSource);
@@ -136,7 +140,7 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
       res.status(409).json({ error: "no_cost_in_period" });
       return;
     }
-    source = parsed.data.source ?? "manual";
+    source = parsed.data.source ?? "focus";
   }
 
   const setActive = parsed.data.setActive !== false;

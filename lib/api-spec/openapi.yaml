@@ -765,7 +765,7 @@ components:
         totalCost: { type: number }
         monthlyAvg: { type: number }
         months: { type: integer }
-        source: { type: string, description: "auto | manual" }
+        source: { type: string, description: "focus | manual-input | auto | manual" }
         isActive: { type: boolean }
         createdAt: { type: string }
         byService:
@@ -806,7 +806,7 @@ components:
           enum: [BilledCost, EffectiveCost]
         source:
           type: string
-          enum: [auto, manual, manual-input]
+          enum: [auto, manual, focus, manual-input]
         setActive:
           type: boolean
           description: "If true (default), mark this baseline as the active one for the tenant"

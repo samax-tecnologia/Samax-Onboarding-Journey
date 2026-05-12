@@ -24,7 +24,7 @@ export interface Baseline {
   totalCost: number;
   monthlyAvg: number;
   months: number;
-  /** auto | manual */
+  /** focus | manual-input | auto | manual */
   source: string;
   isActive: boolean;
   createdAt: string;

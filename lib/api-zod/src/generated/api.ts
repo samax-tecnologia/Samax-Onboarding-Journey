@@ -362,7 +362,7 @@ export const ListBaselinesResponseItem = zod.object({
   totalCost: zod.number(),
   monthlyAvg: zod.number(),
   months: zod.number(),
-  source: zod.string().describe("auto | manual"),
+  source: zod.string().describe("focus | manual-input | auto | manual"),
   isActive: zod.boolean(),
   createdAt: zod.string(),
   byService: zod.record(zod.string(), zod.number()),
@@ -385,7 +385,7 @@ export const CreateBaselineBody = zod.object({
   periodStart: zod.string().describe("ISO date (YYYY-MM-DD), inclusive"),
   periodEnd: zod.string().describe("ISO date (YYYY-MM-DD), exclusive"),
   costType: zod.enum(["BilledCost", "EffectiveCost"]).optional(),
-  source: zod.enum(["auto", "manual", "manual-input"]).optional(),
+  source: zod.enum(["auto", "manual", "focus", "manual-input"]).optional(),
   setActive: zod
     .boolean()
     .optional()

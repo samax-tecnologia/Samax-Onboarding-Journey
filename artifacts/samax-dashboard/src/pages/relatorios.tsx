@@ -1183,6 +1183,16 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   const manualMonthlyTotal = entries.reduce((sum, e) => sum + (parseFloat(e.monthlyValue) || 0), 0);
 
+  const manualPeriodMonths = useMemo(() => {
+    const s = new Date(start);
+    const e = new Date(end);
+    const ms = s.getUTCFullYear() * 12 + s.getUTCMonth();
+    const me = e.getUTCFullYear() * 12 + e.getUTCMonth();
+    return Math.max(1, me - ms);
+  }, [start, end]);
+
+  const manualPeriodTotal = manualMonthlyTotal * manualPeriodMonths;
+
   const onSubmit = async () => {
     if (!label.trim()) {
       toast({ title: "Informe um nome", variant: "destructive" });
@@ -1342,11 +1352,19 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar linha
               </Button>
-              <div className="text-sm text-muted-foreground">
-                Total mensal:{" "}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatCurrency(manualMonthlyTotal, "USD")}
-                </span>
+              <div className="text-sm text-muted-foreground text-right space-y-0.5">
+                <div>
+                  Mensal:{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatCurrency(manualMonthlyTotal, "USD")}
+                  </span>
+                </div>
+                <div>
+                  Total período ({manualPeriodMonths} {manualPeriodMonths === 1 ? "mês" : "meses"}):{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatCurrency(manualPeriodTotal, "USD")}
+                  </span>
+                </div>
               </div>
             </div>
           </TabsContent>
