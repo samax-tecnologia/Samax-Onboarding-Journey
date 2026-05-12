@@ -264,6 +264,34 @@ paths:
                 $ref: "#/components/schemas/Baseline"
 
   /tenants/{tenantId}/baselines/{id}:
+    patch:
+      operationId: renameBaseline
+      tags: [reports]
+      summary: Rename a baseline (update its label)
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BaselineLabelUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Baseline"
+        "404":
+          description: Not found
     delete:
       operationId: deleteBaseline
       tags: [reports]
@@ -843,6 +871,12 @@ components:
         monthlyValue:
           type: number
           description: "Average monthly cost for this service"
+
+    BaselineLabelUpdate:
+      type: object
+      required: [label]
+      properties:
+        label: { type: string, minLength: 1 }
 
     BaselineInput:
       type: object

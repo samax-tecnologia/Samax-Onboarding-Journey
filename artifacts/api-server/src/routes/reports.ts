@@ -18,6 +18,7 @@ import { loadDataset, parseDate, type CostType } from "../lib/focus-aggregate";
 import { renderReportPdf } from "../lib/report-pdf";
 import {
   CreateBaselineBody,
+  RenameBaselineBody,
   CreateAppliedChangeBody,
   UpdateAppliedChangeBody,
   CreateOptimizationReportBody,
@@ -183,6 +184,30 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
     return;
   }
   res.status(201).json(serializeBaseline(created));
+});
+
+router.patch("/tenants/:tenantId/baselines/:id", async (req, res) => {
+  const { tenantId, id } = req.params;
+  const resolved = getTenant(req);
+  if (resolved.tenantId !== tenantId) {
+    res.status(403).json({ error: "tenant_mismatch" });
+    return;
+  }
+  const parsed = RenameBaselineBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", issues: parsed.error.issues });
+    return;
+  }
+  const [updated] = await db
+    .update(baselinesTable)
+    .set({ label: parsed.data.label })
+    .where(and(eq(baselinesTable.tenantId, tenantId), eq(baselinesTable.id, id)))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json(serializeBaseline(updated));
 });
 
 router.delete("/tenants/:tenantId/baselines/:id", async (req, res) => {

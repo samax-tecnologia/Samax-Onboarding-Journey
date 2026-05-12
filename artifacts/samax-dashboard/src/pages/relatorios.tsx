@@ -8,6 +8,7 @@ import {
   useCreateBaseline,
   useDeleteBaseline,
   useActivateBaseline,
+  useRenameBaseline,
   useListAppliedChanges,
   useCreateAppliedChange,
   useUpdateAppliedChange,
@@ -83,6 +84,7 @@ import {
   ChevronDown,
   ChevronUp,
   Upload,
+  Pencil,
 } from "lucide-react";
 import { customFetchUrl } from "@/lib/report-pdf-url";
 import { useUnitEconomics } from "@/lib/unit-economics-store";
@@ -1153,6 +1155,7 @@ function BaselineBreakdownTable({
 
 function BaselineRow({ baseline, tenantId }: { baseline: Baseline; tenantId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
   const qc = useQueryClient();
   const { toast } = useToast();
   const delMutation = useDeleteBaseline();
@@ -1239,6 +1242,16 @@ function BaselineRow({ baseline, tenantId }: { baseline: Baseline; tenantId: str
                   )}
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground shrink-0"
+                onClick={() => setRenameOpen(true)}
+                title="Renomear baseline"
+                data-testid={`baseline-rename-${baseline.id}`}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
               {!baseline.isActive && (
                 <Button
                   variant="outline"
@@ -1284,7 +1297,91 @@ function BaselineRow({ baseline, tenantId }: { baseline: Baseline; tenantId: str
           </div>
         )}
       </CardContent>
+
+      <BaselineRenameDialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        baseline={baseline}
+        tenantId={tenantId}
+      />
     </Card>
+  );
+}
+
+function BaselineRenameDialog({
+  open,
+  onOpenChange,
+  baseline,
+  tenantId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  baseline: Baseline;
+  tenantId: string;
+}) {
+  const [label, setLabel] = useState(baseline.label);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const renameMutation = useRenameBaseline();
+
+  useEffect(() => {
+    if (open) setLabel(baseline.label);
+  }, [open, baseline.label]);
+
+  const onSubmit = async () => {
+    const trimmed = label.trim();
+    if (!trimmed) {
+      toast({ title: "O nome não pode ser vazio", variant: "destructive" });
+      return;
+    }
+    if (trimmed === baseline.label) {
+      onOpenChange(false);
+      return;
+    }
+    try {
+      await renameMutation.mutateAsync({ tenantId, id: baseline.id, data: { label: trimmed } });
+      qc.invalidateQueries({ queryKey: getListBaselinesQueryKey(tenantId) });
+      toast({ title: "Baseline renomeado" });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Falha ao renomear baseline", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Renomear baseline</DialogTitle>
+          <DialogDescription>
+            Edite o nome de exibição deste baseline.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label>Nome</Label>
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Ex: Pré-otimização Q4 2024"
+            data-testid="baseline-rename-input"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSubmit();
+            }}
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button
+            onClick={onSubmit}
+            disabled={renameMutation.isPending}
+            data-testid="baseline-rename-confirm"
+          >
+            {renameMutation.isPending ? "Salvando…" : "Salvar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

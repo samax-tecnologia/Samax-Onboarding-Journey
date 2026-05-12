@@ -409,6 +409,39 @@ export const CreateBaselineBody = zod.object({
 });
 
 /**
+ * @summary Rename a baseline (update its label)
+ */
+export const RenameBaselineParams = zod.object({
+  tenantId: zod.coerce.string(),
+  id: zod.coerce.string(),
+});
+
+export const RenameBaselineBody = zod.object({
+  label: zod.string().min(1),
+});
+
+export const RenameBaselineResponse = zod.object({
+  id: zod.string(),
+  tenantId: zod.string(),
+  label: zod.string(),
+  periodStart: zod.string().describe("ISO date (inclusive)"),
+  periodEnd: zod.string().describe("ISO date (exclusive)"),
+  costType: zod.string(),
+  currency: zod.string(),
+  totalCost: zod.number(),
+  monthlyAvg: zod.number(),
+  months: zod.number(),
+  source: zod.string().describe("focus | manual-input | auto | manual"),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+  byService: zod.record(zod.string(), zod.number()),
+  byCategory: zod.record(zod.string(), zod.number()),
+  byProvider: zod.record(zod.string(), zod.number()),
+  byTeam: zod.record(zod.string(), zod.number()),
+  byProduct: zod.record(zod.string(), zod.number()),
+});
+
+/**
  * @summary Delete a baseline (cannot delete the active one)
  */
 export const DeleteBaselineParams = zod.object({

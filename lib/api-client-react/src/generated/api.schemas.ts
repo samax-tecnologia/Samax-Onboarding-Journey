@@ -276,6 +276,11 @@ export interface BaselineManualEntry {
   monthlyValue: number;
 }
 
+export interface BaselineLabelUpdate {
+  /** @minLength 1 */
+  label: string;
+}
+
 export type BaselineInputCostType =
   (typeof BaselineInputCostType)[keyof typeof BaselineInputCostType];
 

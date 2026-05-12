@@ -22,6 +22,7 @@ import type {
   AppliedChangeUpdate,
   Baseline,
   BaselineInput,
+  BaselineLabelUpdate,
   Connection,
   ConnectionInput,
   ConnectionList,
@@ -1086,6 +1087,94 @@ export const useCreateBaseline = <
   TContext
 > => {
   return useMutation(getCreateBaselineMutationOptions(options));
+};
+
+/**
+ * @summary Rename a baseline (update its label)
+ */
+export const getRenameBaselineUrl = (tenantId: string, id: string) => {
+  return `/api/tenants/${tenantId}/baselines/${id}`;
+};
+
+export const renameBaseline = async (
+  tenantId: string,
+  id: string,
+  baselineLabelUpdate: BaselineLabelUpdate,
+  options?: RequestInit,
+): Promise<Baseline> => {
+  return customFetch<Baseline>(getRenameBaselineUrl(tenantId, id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(baselineLabelUpdate),
+  });
+};
+
+export const getRenameBaselineMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameBaseline>>,
+    TError,
+    { tenantId: string; id: string; data: BodyType<BaselineLabelUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof renameBaseline>>,
+  TError,
+  { tenantId: string; id: string; data: BodyType<BaselineLabelUpdate> },
+  TContext
+> => {
+  const mutationKey = ["renameBaseline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof renameBaseline>>,
+    { tenantId: string; id: string; data: BodyType<BaselineLabelUpdate> }
+  > = (props) => {
+    const { tenantId, id, data } = props ?? {};
+
+    return renameBaseline(tenantId, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RenameBaselineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof renameBaseline>>
+>;
+export type RenameBaselineMutationBody = BodyType<BaselineLabelUpdate>;
+export type RenameBaselineMutationError = ErrorType<void>;
+
+/**
+ * @summary Rename a baseline (update its label)
+ */
+export const useRenameBaseline = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof renameBaseline>>,
+    TError,
+    { tenantId: string; id: string; data: BodyType<BaselineLabelUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof renameBaseline>>,
+  TError,
+  { tenantId: string; id: string; data: BodyType<BaselineLabelUpdate> },
+  TContext
+> => {
+  return useMutation(getRenameBaselineMutationOptions(options));
 };
 
 /**
