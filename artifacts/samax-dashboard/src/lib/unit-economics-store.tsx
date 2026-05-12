@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTenant } from "@/lib/tenant-store";
+import type { TemplateId } from "./unit-economics-templates";
+export type { TemplateId, UnitMetricTemplate } from "./unit-economics-templates";
 
 export type MetricCategory = "resource_efficiency" | "business";
 export type MetricFormat = "currency" | "percent";
@@ -59,50 +61,6 @@ export type UnitEconomicsState = {
   /** metricId -> period -> value */
   data: Record<string, Record<Period, number>>;
 };
-
-export type TemplateId = "cost-per-employee" | "cost-per-tech-fte" | "tech-cost-pct-revenue";
-
-export type UnitMetricTemplate = {
-  id: TemplateId;
-  name: string;
-  description: string;
-  category: MetricCategory;
-  unitLabel: string;
-  format: MetricFormat;
-  /** A short label used as the CSV "value" column header in the sample template. */
-  sampleValueColumn: string;
-};
-
-export const TEMPLATES: UnitMetricTemplate[] = [
-  {
-    id: "cost-per-employee",
-    name: "Custo por colaborador",
-    description: "Gasto total de tecnologia dividido pelo número de colaboradores no período.",
-    category: "business",
-    unitLabel: "colaborador",
-    format: "currency",
-    sampleValueColumn: "headcount",
-  },
-  {
-    id: "cost-per-tech-fte",
-    name: "Custo por FTE de tecnologia",
-    description:
-      "Gasto total dividido pelo número de FTEs de tecnologia (engenharia, SRE, dados, etc.).",
-    category: "business",
-    unitLabel: "FTE de tecnologia",
-    format: "currency",
-    sampleValueColumn: "tech_fte",
-  },
-  {
-    id: "tech-cost-pct-revenue",
-    name: "Custo de tecnologia como % da receita",
-    description: "Gasto total de tecnologia dividido pela receita do período, exibido em %.",
-    category: "business",
-    unitLabel: "receita",
-    format: "percent",
-    sampleValueColumn: "revenue",
-  },
-];
 
 type Ctx = {
   metrics: UnitMetric[];

@@ -19,12 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { TEMPLATES, type TemplateId } from "@/lib/unit-economics-templates";
 import {
-  TEMPLATES,
   useUnitEconomics,
   type MetricCategory,
   type MetricFormat,
-  type TemplateId,
   type UnitMetric,
 } from "@/lib/unit-economics-store";
 

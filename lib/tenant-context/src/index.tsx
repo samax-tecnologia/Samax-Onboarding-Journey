@@ -9,13 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import { setExtraHeadersGetter } from "@workspace/api-client-react";
-
-export type TenantOption = { id: string; label: string };
-
-export const TENANTS: readonly TenantOption[] = [
-  { id: "demo", label: "Demo (mock)" },
-  { id: "acme", label: "Acme Cloud (live)" },
-] as const;
+import { TENANTS } from "./tenants";
+import type { TenantOption } from "./tenants";
+export type { TenantOption } from "./tenants";
 
 const STORAGE_KEY = "samax-tenant";
 const TENANT_HEADER = "x-samax-tenant";

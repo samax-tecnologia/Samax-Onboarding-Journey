@@ -28,11 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { parseCsv, normalizePeriod, parseNumber } from "@/lib/csv-parse";
 import { downloadCsv, toCsv } from "@/lib/export";
-import {
-  TEMPLATES,
-  useUnitEconomics,
-  type UnitMetric,
-} from "@/lib/unit-economics-store";
+import { TEMPLATES } from "@/lib/unit-economics-templates";
+import { useUnitEconomics, type UnitMetric } from "@/lib/unit-economics-store";
 import { Upload, Download, FileText, AlertTriangle } from "lucide-react";
 
 type Props = {
