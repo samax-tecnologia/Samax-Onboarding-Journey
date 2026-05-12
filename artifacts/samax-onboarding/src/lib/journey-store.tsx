@@ -16,6 +16,17 @@ export interface JourneyNotification {
   link?: string;
 }
 
+export interface PreActivationFlags {
+  contractSigned: boolean;
+  contractSignedAt: string | null;
+  channelAccessGranted: boolean;
+  channelAccessGrantedAt: string | null;
+  channelType: "slack" | "teams" | "whatsapp" | "other" | null;
+  channelName: string | null;
+  bobBotConnected: boolean;
+  bobBotConnectedAt: string | null;
+}
+
 export interface JourneyState {
   completedTaskIds: string[];
   phaseStatuses: Record<string, PhaseStatus>;
@@ -26,6 +37,7 @@ export interface JourneyState {
   capturedValue: { realizada: number; aprovada: number; evitada: number; governanca: number };
   customerProfile: typeof CUSTOMER_PROFILE;
   notifications: JourneyNotification[];
+  preActivationFlags: PreActivationFlags;
 }
 
 type Action =
@@ -39,7 +51,19 @@ type Action =
   | { type: "ADD_NOTIFICATION"; payload: Omit<JourneyNotification, "id" | "createdAt" | "read"> }
   | { type: "MARK_NOTIFICATION_READ"; payload: string }
   | { type: "MARK_ALL_READ" }
+  | { type: "SET_PRE_ACTIVATION_FLAG"; payload: Partial<PreActivationFlags> }
   | { type: "LOAD_STATE"; payload: JourneyState };
+
+const defaultPreActivationFlags: PreActivationFlags = {
+  contractSigned: false,
+  contractSignedAt: null,
+  channelAccessGranted: false,
+  channelAccessGrantedAt: null,
+  channelType: null,
+  channelName: null,
+  bobBotConnected: false,
+  bobBotConnectedAt: null,
+};
 
 const defaultState: JourneyState = {
   completedTaskIds: [],
@@ -56,6 +80,7 @@ const defaultState: JourneyState = {
   },
   customerProfile: CUSTOMER_PROFILE,
   notifications: [],
+  preActivationFlags: defaultPreActivationFlags,
 };
 
 const STORAGE_KEY_PREFIX = "samax-journey-v2";
@@ -153,6 +178,11 @@ function reduce(state: JourneyState, action: Action): JourneyState {
         ...state,
         notifications: state.notifications.map((n) => ({ ...n, read: true })),
       };
+    case "SET_PRE_ACTIVATION_FLAG":
+      return {
+        ...state,
+        preActivationFlags: { ...state.preActivationFlags, ...action.payload },
+      };
     case "LOAD_STATE":
       return action.payload;
     default:
@@ -177,6 +207,12 @@ function sanitize(raw: unknown): JourneyState {
     capturedValue: { ...defaultState.capturedValue, ...(obj.capturedValue ?? {}) },
     customerProfile: { ...defaultState.customerProfile, ...(obj.customerProfile ?? {}) },
     notifications: Array.isArray(obj.notifications) ? obj.notifications : [],
+    preActivationFlags: {
+      ...defaultPreActivationFlags,
+      ...(obj.preActivationFlags && typeof obj.preActivationFlags === "object"
+        ? obj.preActivationFlags
+        : {}),
+    },
   };
 }
 
@@ -331,6 +367,8 @@ export function useJourney() {
     addNotification,
     markNotificationRead: (id: string) => dispatch({ type: "MARK_NOTIFICATION_READ", payload: id }),
     markAllNotificationsRead: () => dispatch({ type: "MARK_ALL_READ" }),
+    setPreActivationFlag: (payload: Partial<PreActivationFlags>) =>
+      dispatch({ type: "SET_PRE_ACTIVATION_FLAG", payload }),
   };
 
   const getMetaMinima = () => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -12,6 +12,10 @@ import {
   Clock,
   Target as TargetIcon,
   Lock,
+  FileCheck,
+  MessageSquare,
+  Bot,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +29,9 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { useJourney, PhaseStatus } from "@/lib/journey-store";
+import { useJourney, PhaseStatus, type PreActivationFlags } from "@/lib/journey-store";
+import { useListBaselines } from "@workspace/api-client-react";
+import { useTenant } from "@/lib/tenant-store";
 import { PHASES, MILESTONES, OPPORTUNITIES } from "@/lib/constants";
 import { MilestonesPanel } from "@/pages/onboarding/components/MilestonesPanel";
 
@@ -121,6 +127,230 @@ function PageHeader() {
         </Link>
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// PreActivation checklist helpers
+// =============================================================================
+
+function ChecklistItem({
+  icon,
+  checked,
+  label,
+  disabled = false,
+  onCheckedChange,
+  children,
+}: {
+  icon: ReactNode;
+  checked: boolean;
+  label: string;
+  disabled?: boolean;
+  onCheckedChange?: (v: boolean) => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border p-3 transition-colors",
+        checked ? "bg-primary/5 border-primary/20" : "bg-background border-border"
+      )}
+    >
+      <label className="flex items-start gap-3 cursor-pointer select-none">
+        <Checkbox
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={(v) => onCheckedChange?.(!!v)}
+          className="mt-0.5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+        />
+        <span
+          className={cn(
+            "flex items-center gap-1.5 text-sm flex-1",
+            checked ? "text-muted-foreground" : "text-foreground"
+          )}
+        >
+          {icon}
+          {label}
+        </span>
+      </label>
+      {children && <div className="ml-7 mt-1">{children}</div>}
+    </div>
+  );
+}
+
+function PreActivationChecklist() {
+  const { state, actions } = useJourney();
+  const { tenantId } = useTenant();
+  const flags = state.preActivationFlags;
+  const { data: baselines, isLoading: baselinesLoading } = useListBaselines(tenantId);
+  const hasBaseline = (baselines?.length ?? 0) > 0;
+  const latestBaseline = baselines?.[0];
+
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const channelLabel =
+    flags.channelType === "slack"
+      ? "Slack"
+      : flags.channelType === "teams"
+        ? "Teams"
+        : flags.channelType === "whatsapp"
+          ? "WhatsApp"
+          : flags.channelType === "other"
+            ? "Outro"
+            : null;
+
+  return (
+    <Card className="mb-6 border-amber-500/30 bg-amber-500/5">
+      <CardHeader className="pb-3 border-b border-amber-500/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Pré-ativação</CardTitle>
+          <Badge
+            variant="outline"
+            className="text-[10px] text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 gap-1"
+          >
+            <Eye className="w-3 h-3" /> Apenas consultor
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+        {/* 1 — Contrato */}
+        <ChecklistItem
+          icon={<FileCheck className="w-4 h-4 text-muted-foreground" />}
+          checked={flags.contractSigned}
+          label="Contrato assinado"
+          onCheckedChange={(v) =>
+            actions.setPreActivationFlag({
+              contractSigned: v,
+              contractSignedAt: v ? new Date().toISOString() : null,
+            })
+          }
+        >
+          {flags.contractSigned && flags.contractSignedAt && (
+            <p className="text-xs text-muted-foreground">
+              Assinado em {fmtDate(flags.contractSignedAt)}
+            </p>
+          )}
+        </ChecklistItem>
+
+        {/* 2 — Canal */}
+        <ChecklistItem
+          icon={<MessageSquare className="w-4 h-4 text-muted-foreground" />}
+          checked={flags.channelAccessGranted}
+          label="Acesso ao canal de comunicação liberado"
+          onCheckedChange={(v) =>
+            actions.setPreActivationFlag({
+              channelAccessGranted: v,
+              channelAccessGrantedAt: v ? new Date().toISOString() : null,
+            })
+          }
+        >
+          {flags.channelAccessGranted && (
+            <div onClick={(e) => e.stopPropagation()}>
+              {channelLabel && flags.channelName ? (
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[11px]">
+                    {channelLabel} · {flags.channelName}
+                  </Badge>
+                  <button
+                    className="text-[10px] text-muted-foreground underline"
+                    onClick={() =>
+                      actions.setPreActivationFlag({ channelType: null, channelName: null })
+                    }
+                  >
+                    editar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                  <Select
+                    value={flags.channelType ?? ""}
+                    onValueChange={(v) =>
+                      actions.setPreActivationFlag({
+                        channelType: v as PreActivationFlags["channelType"],
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-7 text-xs w-36">
+                      <SelectValue placeholder="Plataforma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="slack">Slack</SelectItem>
+                      <SelectItem value="teams">Teams</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="#finops-acme"
+                    value={flags.channelName ?? ""}
+                    onChange={(e) =>
+                      actions.setPreActivationFlag({ channelName: e.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </ChecklistItem>
+
+        {/* 3 — BobBot */}
+        <ChecklistItem
+          icon={<Bot className="w-4 h-4 text-muted-foreground" />}
+          checked={flags.bobBotConnected}
+          label="BobBot conectado ao canal"
+          onCheckedChange={(v) =>
+            actions.setPreActivationFlag({
+              bobBotConnected: v,
+              bobBotConnectedAt: v ? new Date().toISOString() : null,
+            })
+          }
+        >
+          {flags.bobBotConnected && (
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[11px]">
+                Ativo
+              </Badge>
+              {flags.bobBotConnectedAt && (
+                <span className="text-xs text-muted-foreground">
+                  desde {fmtDate(flags.bobBotConnectedAt)}
+                </span>
+              )}
+            </div>
+          )}
+        </ChecklistItem>
+
+        {/* 4 — Baseline (lê da API, não é togglável) */}
+        <ChecklistItem
+          icon={<BarChart3 className="w-4 h-4 text-muted-foreground" />}
+          checked={hasBaseline}
+          label="Baseline criado"
+          disabled
+        >
+          {baselinesLoading ? (
+            <p className="text-xs text-muted-foreground">Verificando…</p>
+          ) : hasBaseline ? (
+            <p className="text-xs text-muted-foreground">{latestBaseline?.label}</p>
+          ) : (
+            <a
+              href="/dashboard/relatorios"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline"
+            >
+              → Criar baseline no dashboard
+            </a>
+          )}
+        </ChecklistItem>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -502,6 +732,7 @@ export default function InternalPage() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <PageHeader />
+      <PreActivationChecklist />
       <HealthSummary />
       <GoalCalculator />
 

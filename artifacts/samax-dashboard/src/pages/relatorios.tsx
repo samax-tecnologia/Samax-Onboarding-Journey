@@ -13,6 +13,7 @@ import {
   AppliedChangeUpdateStatus,
   useGetFocusFilters,
   useGetFocusSavings,
+  useGetFocusSummary,
   getListOptimizationReportsQueryKey,
   getListBaselinesQueryKey,
   getListAppliedChangesQueryKey,
@@ -115,7 +116,7 @@ function defaultBaselineWindow(periodEndIso?: string): { start: string; end: str
 export default function RelatoriosPage() {
   const { tenantId } = useTenant();
   const [openId, setOpenId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"reports" | "baselines" | "changes">("reports");
+  const [tab, setTab] = useState<"reports" | "baselines" | "changes" | "savings-report">("reports");
 
   return (
     <div className="px-8 py-6 space-y-6">
@@ -145,6 +146,9 @@ export default function RelatoriosPage() {
             <TabsTrigger value="changes" data-testid="tab-changes">
               <CheckCircle2 className="w-4 h-4 mr-1.5" /> Mudanças aplicadas
             </TabsTrigger>
+            <TabsTrigger value="savings-report" data-testid="tab-savings-report">
+              <TrendingUp className="w-4 h-4 mr-1.5" /> Savings Report
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="reports" className="mt-4">
             <ReportsTab onOpen={(id) => setOpenId(id)} />
@@ -154,6 +158,9 @@ export default function RelatoriosPage() {
           </TabsContent>
           <TabsContent value="changes" className="mt-4">
             <AppliedChangesTab />
+          </TabsContent>
+          <TabsContent value="savings-report" className="mt-4">
+            <SavingsReportTab />
           </TabsContent>
         </Tabs>
       )}
@@ -1046,14 +1053,7 @@ function BaselinesTab({ tenantId }: { tenantId: string }) {
       {isLoading ? (
         <Skeleton className="h-24 w-full" />
       ) : (baselines?.length ?? 0) === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Nenhum baseline ainda</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Sugestão: use os 3 meses anteriores ao início do trabalho com a Samax como baseline.
-          </CardContent>
-        </Card>
+        <EmptyBaselineBanner onCreateClick={() => setOpen(true)} />
       ) : (
         <div className="space-y-3">
           {baselines!.map((b) => <BaselineRow key={b.id} baseline={b} />)}
@@ -1062,6 +1062,41 @@ function BaselinesTab({ tenantId }: { tenantId: string }) {
 
       <BaselineWizardDialog open={open} onOpenChange={setOpen} />
     </div>
+  );
+}
+
+function EmptyBaselineBanner({ onCreateClick }: { onCreateClick: () => void }) {
+  return (
+    <Card className="border-dashed bg-muted/20">
+      <CardContent className="p-8 text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+          <Layers className="w-6 h-6 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold">Crie seu baseline de referência</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+            O baseline é o ponto de partida para medir toda economia gerada. Sem ele, não é possível comparar resultados.
+          </p>
+        </div>
+        <ul className="text-sm text-muted-foreground space-y-1 text-left inline-block">
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            Período recomendado: últimos 90 dias antes do início da otimização
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            Captura gastos por serviço, provedor, time e produto
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            Fica congelado — relatórios futuros sempre comparam com esses números
+          </li>
+        </ul>
+        <Button onClick={onCreateClick} data-testid="empty-banner-create-baseline">
+          <Plus className="w-4 h-4 mr-1.5" /> Criar baseline agora
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1516,5 +1551,248 @@ function AppliedChangeDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// =============================================================================
+// Savings Report tab
+// =============================================================================
+
+function SavingsKpiCard({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "positive" | "negative" | "neutral";
+}) {
+  const valueCls =
+    tone === "positive"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "negative"
+        ? "text-rose-600 dark:text-rose-400"
+        : "";
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className={`text-xl font-semibold tabular-nums mt-1 ${valueCls}`}>{value}</div>
+        {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SavingsReportTab() {
+  const { tenantId } = useTenant();
+  const now = new Date();
+  const currentMonth = now.toLocaleString("pt-BR", { month: "long", year: "numeric" });
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10);
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    .toISOString()
+    .slice(0, 10);
+
+  const { data: summary } = useGetFocusSummary({});
+  const { data: appliedChanges } = useListAppliedChanges();
+  const { data: savings } = useGetFocusSavings({});
+
+  const currency = summary?.currency ?? "BRL";
+
+  const monthChanges = useMemo(
+    () =>
+      (appliedChanges ?? []).filter((c) => {
+        const at = c.appliedAt.slice(0, 10);
+        return at >= monthStart && at < monthEnd;
+      }),
+    [appliedChanges, monthStart, monthEnd]
+  );
+
+  const allTimeSavings = useMemo(
+    () =>
+      (appliedChanges ?? [])
+        .filter((c) => c.status === "active")
+        .reduce((acc, c) => acc + c.estimatedMonthlySavings, 0),
+    [appliedChanges]
+  );
+
+  const monthSavings = monthChanges.reduce((acc, c) => acc + c.estimatedMonthlySavings, 0);
+
+  const top3Opps = useMemo(
+    () =>
+      [...(savings?.opportunities ?? [])]
+        .sort((a, b) => b.monthlySavings - a.monthlySavings)
+        .slice(0, 3),
+    [savings]
+  );
+
+  const pctOfTotal =
+    summary?.actualSpend && summary.actualSpend > 0
+      ? monthSavings / summary.actualSpend
+      : null;
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">
+            Savings Report ·{" "}
+            <span className="capitalize text-muted-foreground font-normal">{currentMonth}</span>
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{tenantId}</p>
+        </div>
+        <Button variant="outline" disabled title="Em breve">
+          <FileDown className="w-4 h-4 mr-1.5" /> Exportar PDF
+        </Button>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SavingsKpiCard
+          label="Economia Realizada"
+          value={formatCurrency(monthSavings, currency)}
+          sub={pctOfTotal != null ? `${formatPercent(pctOfTotal)} do gasto total` : undefined}
+          tone="positive"
+        />
+        <SavingsKpiCard
+          label="Gasto Total"
+          value={formatCurrency(summary?.actualSpend ?? 0, currency)}
+          sub={
+            summary?.forecastSpend
+              ? `Previsão: ${formatCurrency(summary.forecastSpend, currency)}`
+              : undefined
+          }
+        />
+        <SavingsKpiCard
+          label="Oportunidades Abertas"
+          value={String(summary?.savingsCount ?? 0)}
+          sub={
+            summary
+              ? `${formatCurrency(summary.savingsTotal, currency)}/mês potencial`
+              : undefined
+          }
+        />
+        <SavingsKpiCard
+          label="Savings Acumulado"
+          value={formatCurrency(allTimeSavings, currency)}
+          sub="mudanças ativas"
+          tone="positive"
+        />
+      </div>
+
+      {/* Top wins */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Top wins do mês</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {monthChanges.length === 0 ? (
+            <div className="text-center py-8 space-y-2">
+              <TrendingUp className="w-8 h-8 text-muted-foreground mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                Nenhuma economia registrada neste mês — aplique uma oportunidade na aba{" "}
+                <strong>Mudanças aplicadas</strong>.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ação</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead className="text-right">Economia/mês</TableHead>
+                  <TableHead>Data aplicada</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {monthChanges.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium">{c.title}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {c.scopeService ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-600 font-semibold">
+                      {formatCurrency(c.estimatedMonthlySavings, currency)}
+                    </TableCell>
+                    <TableCell className="text-sm">{fmtDate(c.appliedAt)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Next opportunities */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between">
+            Próximas oportunidades
+            <Button variant="ghost" size="sm" asChild>
+              <a href="/dashboard">Ver todas →</a>
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {top3Opps.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Sem oportunidades disponíveis no momento.
+            </p>
+          ) : (
+            top3Opps.map((opp) => (
+              <div
+                key={opp.id}
+                className="flex items-center justify-between gap-3 rounded-md border p-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{opp.title}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <Badge variant="outline" className="text-[10px]">
+                      {opp.category}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={
+                        opp.effort === "low"
+                          ? "text-[10px] border-emerald-300 text-emerald-700 dark:text-emerald-300"
+                          : opp.effort === "high"
+                            ? "text-[10px] border-rose-300 text-rose-700 dark:text-rose-300"
+                            : "text-[10px] border-amber-300 text-amber-700 dark:text-amber-300"
+                      }
+                    >
+                      {opp.effort === "low"
+                        ? "Baixo esforço"
+                        : opp.effort === "high"
+                          ? "Alto esforço"
+                          : "Esforço médio"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Economia/mês
+                  </div>
+                  <div className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(opp.monthlySavings, currency)}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

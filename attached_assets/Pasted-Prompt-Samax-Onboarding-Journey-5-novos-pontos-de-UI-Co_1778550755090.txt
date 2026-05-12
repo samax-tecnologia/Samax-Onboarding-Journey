@@ -1,0 +1,150 @@
+Prompt — Samax Onboarding Journey: 5 novos pontos de UI
+Contexto do projeto
+Este é um monorepo pnpm com dois frontends React + um API server Express:
+
+artifacts/samax-onboarding — App de acompanhamento da jornada do cliente. Tem duas views: interna (/internal, usada pelo consultor Samax) e do cliente (/, vista pelo cliente). O estado da jornada fica em src/lib/journey-store.tsx (React context + localStorage por tenant). A definição de fases, milestones e oportunidades fica em src/lib/constants.ts.
+artifacts/samax-dashboard — Dashboard principal de custos cloud. Tem páginas: / (FinOps Overview), /conexoes, /relatorios (baselines + optimization reports + applied changes), /unit-economics.
+lib/api-spec/openapi.yaml — OpenAPI spec. Os hooks React Query ficam em lib/api-client-react/src/generated/.
+
+Importante: tudo roda com dados mockados/sample por enquanto. Não mexa nos adaptadores de cloud (artifacts/api-server/src/lib/adapters/). Não quebre nenhuma funcionalidade existente.
+
+O que precisa ser feito
+Adicionar 5 pontos de UI que atualmente não existem ou estão incompletos na jornada do cliente. Todos devem usar flags booleanas simples (aconteceu/não aconteceu) no journey-store, sem necessidade de integração real com serviços externos.
+
+1. Check de assinatura do contrato
+Onde: view interna (artifacts/samax-onboarding/src/pages/internal/index.tsx)
+O que fazer:
+Em src/lib/journey-store.tsx, adicionar ao JourneyState:
+tspreActivationFlags: {
+  contractSigned: boolean;
+  contractSignedAt: string | null; // ISO date string
+}
+E a action correspondente: SET_PRE_ACTIVATION_FLAG que recebe { key: keyof JourneyState['preActivationFlags'], value: boolean }.
+Adicionar persistência no reduce e no sanitize.
+Na view interna (internal/index.tsx), criar um componente PreActivationChecklist e renderizá-lo acima do HealthSummary. Ele deve mostrar um card com o título "Pré-ativação" com visual de checklist. O item de contrato deve ter:
+
+Checkbox togglável (ao marcar, registra a data atual em contractSignedAt)
+Label: "Contrato assinado"
+Quando marcado: mostrar a data de assinatura formatada em pt-BR
+Ícone FileCheck do lucide-react
+
+
+2. Check de acesso ao canal de comunicação (Teams/Slack)
+Onde: view interna (internal/index.tsx) — mesmo card PreActivationChecklist do item 1
+O que fazer:
+Expandir preActivationFlags no JourneyState:
+tspreActivationFlags: {
+  contractSigned: boolean;
+  contractSignedAt: string | null;
+  channelAccessGranted: boolean;
+  channelAccessGrantedAt: string | null;
+  channelType: 'slack' | 'teams' | 'whatsapp' | 'other' | null;
+  channelName: string | null; // ex: "#finops-acme" ou "canal do projeto"
+}
+No card PreActivationChecklist, adicionar um segundo item:
+
+Checkbox: "Acesso ao canal de comunicação liberado"
+Quando marcado: mostrar inline dois campos de texto pequenos (usando componentes Input do shadcn/ui já instalado):
+
+Select com opções: Slack / Teams / WhatsApp / Outro
+Input de texto: nome do canal (placeholder: "#finops-acme")
+
+
+Ícone MessageSquare do lucide-react
+Quando preenchido e marcado: mostrar resumo "Slack · #finops-acme" com badge verde
+
+O card deve ter visual consistente com o resto da view interna (borda âmbar + badge "Apenas consultor" igual ao dos PhaseCards).
+
+3. Conexão com o BobBot
+Este item tem duas partes: flag na view interna + widget de preview no dashboard.
+Parte A — Flag na view interna
+Expandir preActivationFlags:
+tsbobBotConnected: boolean;
+bobBotConnectedAt: string | null;
+No card PreActivationChecklist, adicionar terceiro item:
+
+Checkbox: "BobBot conectado ao canal"
+Ícone Bot do lucide-react
+Quando marcado: mostrar badge "Ativo" verde + data de ativação
+
+Parte B — Widget BobBot no dashboard
+Em artifacts/samax-dashboard/src/pages/dashboard.tsx, adicionar um card BobBotCard abaixo do SavingsCard (dentro do grid de topo).
+O card deve mostrar o BobBot como se já estivesse ativo, com mensagens mock. Estrutura visual:
+
+Header: avatar do bot (ícone Bot com fundo roxo/violeta) + título "BobBot" + badge "Ativo"
+Três abas (Tabs do shadcn/ui): Alertas | Weekly Recap | Budget
+Aba Alertas: lista de 2–3 mensagens mock de alerta de custo. Exemplo:
+
+"⚠️ Custo de EC2 subiu 23% em relação à semana passada — R$ 4.200 → R$ 5.160"
+"ℹ️ Lambda: 3 funções sem invocação há 30+ dias. Economia potencial: R$ 280/mês"
+Cada item com timestamp relativo ("há 2h", "há 1 dia")
+
+
+Aba Weekly Recap: mensagem única formatada como um digest semanal. Exemplo:
+
+  📊 Recap da semana — 05 a 11 mai
+  Gasto total: R$ 23.480 (+7% vs semana anterior)
+  Top serviço: EC2 — R$ 11.200
+  Savings aplicados: R$ 800
+  2 oportunidades abertas · R$ 5.500/mês em potencial
+
+Aba Budget: mostrar uma barra de progresso do budget mensal (usando Progress do shadcn/ui). Budget mock: R$ 30.000. Gasto atual: R$ 23.480. Projeção: R$ 27.000.
+
+Usar dados completamente mockados/hardcoded no componente — sem chamadas de API. Estilo visual consistente com o resto do dashboard.
+
+4. Criação do baseline
+O baseline já pode ser criado em /relatorios no dashboard. O que falta é uma chamada-para-ação guiada quando o cliente ainda não criou nenhum.
+Parte A — Status na view interna
+No card PreActivationChecklist, adicionar quarto item:
+
+Label: "Baseline criado"
+Diferente dos outros: este item não é toggleável manualmente. Ele lê o estado via React Query (useListBaselines do @workspace/api-client-react, passando o tenantId do useTenant()).
+Se baselines.length > 0: mostrar como concluído (checkbox marcado, desabilitado, com label do baseline mais recente)
+Se baselines.length === 0: mostrar checkbox vazio com link "→ Criar baseline" que abre uma nova aba com /relatorios do dashboard (ou exibe o URL)
+Ícone BarChart3 do lucide-react
+
+Parte B — Banner no dashboard
+Em artifacts/samax-dashboard/src/pages/relatorios.tsx, no início da aba de Baselines (já existe), adicionar um EmptyBaselineBanner que aparece somente quando não há baselines:
+
+Card com borda tracejada, fundo sutil
+Título: "Crie seu baseline de referência"
+Subtítulo: "O baseline é o ponto de partida para medir toda economia gerada. Sem ele, não é possível comparar resultados."
+Bullet points resumidos: período recomendado (últimos 90 dias), o que vai capturar (gastos por serviço, provider, time, produto)
+Botão "Criar baseline agora" que abre o dialog de criação já existente na página (acionar o mesmo estado que o botão "Novo Baseline" existente)
+
+
+5. Criação do Savings Report mensal
+O OptimizationReport já existe mas é genérico. Precisa de um formato específico chamado "Savings Report Mensal" — um relatório simplificado focado em economia, para ser compartilhado com o cliente todo mês.
+Onde: artifacts/samax-dashboard/src/pages/relatorios.tsx
+O que fazer:
+Adicionar uma nova aba nas Tabs do topo da página: "Savings Report" (ao lado das abas existentes "Relatórios", "Baselines", "Mudanças Aplicadas").
+Conteúdo da aba "Savings Report":
+Seção 1 — Header do relatório
+
+Título: "Savings Report · [mês atual]" (ex: "Savings Report · Maio 2026")
+Subtítulo: nome do tenant (do useTenant())
+Botão "Exportar PDF" (pode ser placeholder/disabled com tooltip "Em breve")
+
+Seção 2 — KPIs do mês (grid de 4 cards)
+Usar dados do hook useGetFocusSummary já existente. Os 4 cards:
+
+Economia Realizada — soma de estimatedMonthlySavings dos applied changes do mês corrente (usar useListAppliedChanges, filtrar por appliedAt no mês atual). Mostrar em R$ e como "% do gasto total".
+Gasto Total — actualSpend do FocusSummary. Comparar com mês anterior via momDelta.
+Oportunidades Abertas — savingsCount do summary + savingsTotal formatado.
+Savings Acumulado — soma de todos os estimatedMonthlySavings dos applied changes com status active. Label: "desde o início".
+
+Seção 3 — Top wins do mês
+Tabela simples com os applied changes do mês corrente. Colunas: Ação | Serviço | Economia/mês | Data.
+Se não houver applied changes, mostrar estado vazio: "Nenhuma economia registrada neste mês — aplique uma oportunidade da aba Financeiro."
+Seção 4 — Próximas oportunidades recomendadas
+Lista das top 3 oportunidades de useGetFocusSavings, ordenadas por monthlySavings desc. Para cada uma: título, categoria (badge), economia mensal, esforço (badge low/medium/high). Botão "Ver todas" que navega para / (dashboard principal).
+Importante: reutilizar ao máximo os componentes de UI já existentes na página (formatCurrency, badges, cards, tabelas). O relatório deve ter aparência limpa e profissional — como algo que o consultor enviaria ao cliente.
+
+Instruções gerais
+
+Não quebrar nada existente. Todas as páginas e funcionalidades atuais devem continuar funcionando.
+Não criar novos endpoints de API para esses 5 itens. Use o journey-store (localStorage) para as flags e os hooks existentes para dados do dashboard.
+Consistência visual. Use apenas os componentes shadcn/ui já instalados (Card, Badge, Checkbox, Input, Select, Tabs, Progress, Button, Separator) e ícones do lucide-react. Siga o estilo dos componentes existentes.
+TypeScript estrito. Todos os novos tipos devem ser explícitos. Rode pnpm run typecheck ao final.
+Sanitize no journey-store. Sempre que adicionar novos campos ao JourneyState, atualize também a função sanitize para garantir compatibilidade com estados salvos anteriormente.
+Dados mockados no BobBot e no Savings Report devem estar hardcoded diretamente nos componentes — sem criar arquivos de fixture separados.
