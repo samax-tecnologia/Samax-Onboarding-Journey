@@ -185,6 +185,58 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
   res.status(201).json(serializeBaseline(created));
 });
 
+router.delete("/tenants/:tenantId/baselines/:id", async (req, res) => {
+  const { tenantId, id } = req.params;
+  const resolved = getTenant(req);
+  if (resolved.tenantId !== tenantId) {
+    res.status(403).json({ error: "tenant_mismatch" });
+    return;
+  }
+  const [row] = await db
+    .select()
+    .from(baselinesTable)
+    .where(and(eq(baselinesTable.tenantId, tenantId), eq(baselinesTable.id, id)));
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if (row.isActive === "true") {
+    res.status(409).json({ error: "cannot_delete_active_baseline" });
+    return;
+  }
+  await db
+    .delete(baselinesTable)
+    .where(and(eq(baselinesTable.tenantId, tenantId), eq(baselinesTable.id, id)));
+  res.status(204).end();
+});
+
+router.patch("/tenants/:tenantId/baselines/:id/activate", async (req, res) => {
+  const { tenantId, id } = req.params;
+  const resolved = getTenant(req);
+  if (resolved.tenantId !== tenantId) {
+    res.status(403).json({ error: "tenant_mismatch" });
+    return;
+  }
+  const [row] = await db
+    .select()
+    .from(baselinesTable)
+    .where(and(eq(baselinesTable.tenantId, tenantId), eq(baselinesTable.id, id)));
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  await db
+    .update(baselinesTable)
+    .set({ isActive: "false" })
+    .where(eq(baselinesTable.tenantId, tenantId));
+  const [updated] = await db
+    .update(baselinesTable)
+    .set({ isActive: "true" })
+    .where(and(eq(baselinesTable.tenantId, tenantId), eq(baselinesTable.id, id)))
+    .returning();
+  res.json(serializeBaseline(updated));
+});
+
 // ---------- Applied changes ----------
 
 function serializeChange(c: AppliedChange) {

@@ -25,6 +25,7 @@ import type {
   Connection,
   ConnectionInput,
   ConnectionList,
+  DeleteBaseline409,
   FocusBreakdown,
   FocusFilters,
   FocusSavings,
@@ -1085,6 +1086,176 @@ export const useCreateBaseline = <
   TContext
 > => {
   return useMutation(getCreateBaselineMutationOptions(options));
+};
+
+/**
+ * @summary Delete a baseline (cannot delete the active one)
+ */
+export const getDeleteBaselineUrl = (tenantId: string, id: string) => {
+  return `/api/tenants/${tenantId}/baselines/${id}`;
+};
+
+export const deleteBaseline = async (
+  tenantId: string,
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteBaselineUrl(tenantId, id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBaselineMutationOptions = <
+  TError = ErrorType<DeleteBaseline409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBaseline>>,
+    TError,
+    { tenantId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBaseline>>,
+  TError,
+  { tenantId: string; id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteBaseline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBaseline>>,
+    { tenantId: string; id: string }
+  > = (props) => {
+    const { tenantId, id } = props ?? {};
+
+    return deleteBaseline(tenantId, id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBaselineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBaseline>>
+>;
+
+export type DeleteBaselineMutationError = ErrorType<DeleteBaseline409>;
+
+/**
+ * @summary Delete a baseline (cannot delete the active one)
+ */
+export const useDeleteBaseline = <
+  TError = ErrorType<DeleteBaseline409>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBaseline>>,
+    TError,
+    { tenantId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBaseline>>,
+  TError,
+  { tenantId: string; id: string },
+  TContext
+> => {
+  return useMutation(getDeleteBaselineMutationOptions(options));
+};
+
+/**
+ * @summary Set a baseline as the active one and deactivate all others
+ */
+export const getActivateBaselineUrl = (tenantId: string, id: string) => {
+  return `/api/tenants/${tenantId}/baselines/${id}/activate`;
+};
+
+export const activateBaseline = async (
+  tenantId: string,
+  id: string,
+  options?: RequestInit,
+): Promise<Baseline> => {
+  return customFetch<Baseline>(getActivateBaselineUrl(tenantId, id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getActivateBaselineMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateBaseline>>,
+    TError,
+    { tenantId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof activateBaseline>>,
+  TError,
+  { tenantId: string; id: string },
+  TContext
+> => {
+  const mutationKey = ["activateBaseline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof activateBaseline>>,
+    { tenantId: string; id: string }
+  > = (props) => {
+    const { tenantId, id } = props ?? {};
+
+    return activateBaseline(tenantId, id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActivateBaselineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof activateBaseline>>
+>;
+
+export type ActivateBaselineMutationError = ErrorType<void>;
+
+/**
+ * @summary Set a baseline as the active one and deactivate all others
+ */
+export const useActivateBaseline = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateBaseline>>,
+    TError,
+    { tenantId: string; id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof activateBaseline>>,
+  TError,
+  { tenantId: string; id: string },
+  TContext
+> => {
+  return useMutation(getActivateBaselineMutationOptions(options));
 };
 
 /**

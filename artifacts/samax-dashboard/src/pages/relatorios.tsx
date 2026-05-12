@@ -6,6 +6,8 @@ import {
   useDeleteOptimizationReport,
   useListBaselines,
   useCreateBaseline,
+  useDeleteBaseline,
+  useActivateBaseline,
   useListAppliedChanges,
   useCreateAppliedChange,
   useUpdateAppliedChange,
@@ -1058,7 +1060,7 @@ function BaselinesTab({ tenantId }: { tenantId: string }) {
         <EmptyBaselineBanner onCreateClick={() => setOpen(true)} />
       ) : (
         <div className="space-y-3">
-          {baselines!.map((b) => <BaselineRow key={b.id} baseline={b} />)}
+          {baselines!.map((b) => <BaselineRow key={b.id} baseline={b} tenantId={tenantId} />)}
         </div>
       )}
 
@@ -1148,12 +1150,37 @@ function BaselineBreakdownTable({
   );
 }
 
-function BaselineRow({ baseline }: { baseline: Baseline }) {
+function BaselineRow({ baseline, tenantId }: { baseline: Baseline; tenantId: string }) {
   const [expanded, setExpanded] = useState(false);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const delMutation = useDeleteBaseline();
+  const activateMutation = useActivateBaseline();
 
   const hasBreakdown =
     Object.values(baseline.byService ?? {}).some((v) => v > 0) ||
     Object.values(baseline.byProvider ?? {}).some((v) => v > 0);
+
+  const onActivate = async () => {
+    try {
+      await activateMutation.mutateAsync({ tenantId, id: baseline.id });
+      qc.invalidateQueries({ queryKey: getListBaselinesQueryKey(tenantId) });
+      toast({ title: "Baseline definido como ativo" });
+    } catch {
+      toast({ title: "Falha ao ativar baseline", variant: "destructive" });
+    }
+  };
+
+  const onDelete = async () => {
+    if (!window.confirm(`Excluir o baseline "${baseline.label}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await delMutation.mutateAsync({ tenantId, id: baseline.id });
+      qc.invalidateQueries({ queryKey: getListBaselinesQueryKey(tenantId) });
+      toast({ title: "Baseline excluído" });
+    } catch {
+      toast({ title: "Não é possível excluir o baseline ativo", variant: "destructive" });
+    }
+  };
 
   return (
     <Card>
@@ -1163,8 +1190,8 @@ function BaselineRow({ baseline }: { baseline: Baseline }) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium">{baseline.label}</span>
               {baseline.isActive && (
-                <Badge variant="outline" className="text-[11px] border-emerald-300 text-emerald-700">
-                  Ativo
+                <Badge className="text-[11px] bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-100">
+                  Em uso
                 </Badge>
               )}
               {baseline.source === "manual-input" ? (
@@ -1180,7 +1207,7 @@ function BaselineRow({ baseline }: { baseline: Baseline }) {
               {baseline.months} {baseline.months === 1 ? "mês" : "meses"} · criado em {new Date(baseline.createdAt).toLocaleDateString("pt-BR")}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <div className="flex items-center gap-6">
               <div className="text-right">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</div>
@@ -1195,21 +1222,47 @@ function BaselineRow({ baseline }: { baseline: Baseline }) {
                 </div>
               </div>
             </div>
-            {hasBreakdown && (
+            <div className="flex items-center gap-1">
+              {hasBreakdown && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground gap-1 shrink-0"
+                  onClick={() => setExpanded((v) => !v)}
+                  data-testid="baseline-toggle-details"
+                >
+                  {expanded ? (
+                    <>Ocultar <ChevronUp className="w-3.5 h-3.5" /></>
+                  ) : (
+                    <>Ver detalhes <ChevronDown className="w-3.5 h-3.5" /></>
+                  )}
+                </Button>
+              )}
+              {!baseline.isActive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs shrink-0"
+                  onClick={onActivate}
+                  disabled={activateMutation.isPending}
+                  data-testid={`baseline-activate-${baseline.id}`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                  {activateMutation.isPending ? "Ativando…" : "Definir como ativo"}
+                </Button>
+              )}
               <Button
                 variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground gap-1 shrink-0"
-                onClick={() => setExpanded((v) => !v)}
-                data-testid="baseline-toggle-details"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive shrink-0"
+                onClick={onDelete}
+                disabled={baseline.isActive || delMutation.isPending}
+                title={baseline.isActive ? "Não é possível excluir o baseline ativo" : "Excluir baseline"}
+                data-testid={`baseline-delete-${baseline.id}`}
               >
-                {expanded ? (
-                  <>Ocultar <ChevronUp className="w-3.5 h-3.5" /></>
-                ) : (
-                  <>Ver detalhes <ChevronDown className="w-3.5 h-3.5" /></>
-                )}
+                <Trash2 className="w-4 h-4" />
               </Button>
-            )}
+            </div>
           </div>
         </div>
 

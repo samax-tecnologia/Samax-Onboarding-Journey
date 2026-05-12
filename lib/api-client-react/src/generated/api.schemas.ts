@@ -795,3 +795,7 @@ export type GetFocusSavingsParams = {
    */
   products?: ProductsParamParameter;
 };
+
+export type DeleteBaseline409 = {
+  error?: string;
+};

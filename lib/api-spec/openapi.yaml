@@ -263,6 +263,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/Baseline"
 
+  /tenants/{tenantId}/baselines/{id}:
+    delete:
+      operationId: deleteBaseline
+      tags: [reports]
+      summary: Delete a baseline (cannot delete the active one)
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "409":
+          description: Cannot delete the active baseline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+
+  /tenants/{tenantId}/baselines/{id}/activate:
+    patch:
+      operationId: activateBaseline
+      tags: [reports]
+      summary: Set a baseline as the active one and deactivate all others
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string }
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Baseline"
+        "404":
+          description: Not found
+
   /applied-changes:
     get:
       operationId: listAppliedChanges
