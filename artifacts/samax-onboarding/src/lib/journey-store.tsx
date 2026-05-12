@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, ReactNode, useRef } from "react";
-import { PHASES, CUSTOMER_PROFILE, OPPORTUNITIES } from "./constants";
+import { PHASES, CUSTOMER_PROFILE, OPPORTUNITIES, PRE_CONTRACT_MILESTONES } from "./constants";
 import { useTenant } from "./tenant-store";
 
 export type PhaseStatus = "not-started" | "in-progress" | "blocked" | "done";
@@ -82,10 +82,10 @@ type Action =
   | { type: "LOAD_STATE"; payload: JourneyState };
 
 const defaultEngagementMilestones: EngagementMilestones = {
-  diagnostico: "2026-03-10",
-  assinatura: "2026-04-01",
+  diagnostico: PRE_CONTRACT_MILESTONES.find((m) => m.id === "diagnostico")?.date ?? CUSTOMER_PROFILE.kickoffDate,
+  assinatura: PRE_CONTRACT_MILESTONES.find((m) => m.id === "contrato")?.date ?? CUSTOMER_PROFILE.kickoffDate,
   kickoff: CUSTOMER_PROFILE.kickoffDate,
-  baselineDefinition: "2026-04-29",
+  baselineDefinition: PRE_CONTRACT_MILESTONES.find((m) => m.id === "meta")?.date ?? CUSTOMER_PROFILE.kickoffDate,
 };
 
 const defaultManualBaseline: ManualBaseline = {
@@ -229,6 +229,9 @@ function reduce(state: JourneyState, action: Action): JourneyState {
       return {
         ...state,
         engagementMilestones: { ...state.engagementMilestones, ...action.payload },
+        ...(action.payload.kickoff !== undefined
+          ? { customerProfile: { ...state.customerProfile, kickoffDate: action.payload.kickoff } }
+          : {}),
       };
     case "SET_MANUAL_BASELINE_PERIOD":
       return {

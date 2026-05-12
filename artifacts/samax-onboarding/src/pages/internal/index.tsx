@@ -38,8 +38,6 @@ import {
   useJourney,
   PhaseStatus,
   type PreActivationFlags,
-  type EngagementMilestones,
-  type ManualBaselineEntry,
 } from "@/lib/journey-store";
 import { useListBaselines } from "@workspace/api-client-react";
 import { useTenant } from "@/lib/tenant-store";
