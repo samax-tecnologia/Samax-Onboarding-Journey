@@ -78,6 +78,8 @@ import {
   TrendingDown,
   ClipboardList,
   Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { customFetchUrl } from "@/lib/report-pdf-url";
 import { useUnitEconomics } from "@/lib/unit-economics-store";
@@ -1100,45 +1102,133 @@ function EmptyBaselineBanner({ onCreateClick }: { onCreateClick: () => void }) {
   );
 }
 
+function BaselineBreakdownTable({
+  title,
+  data,
+  currency,
+  total,
+}: {
+  title: string;
+  data: Record<string, number>;
+  currency: string;
+  total: number;
+}) {
+  const rows = Object.entries(data)
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{title}</div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-xs">Nome</TableHead>
+            <TableHead className="text-xs text-right">Custo total</TableHead>
+            <TableHead className="text-xs text-right">% do total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map(([name, value]) => (
+            <TableRow key={name}>
+              <TableCell className="text-sm py-2">{name}</TableCell>
+              <TableCell className="text-sm py-2 text-right tabular-nums">
+                {formatCurrency(value, currency)}
+              </TableCell>
+              <TableCell className="text-sm py-2 text-right tabular-nums text-muted-foreground">
+                {total > 0 ? formatPercent(value / total) : "—"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function BaselineRow({ baseline }: { baseline: Baseline }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const hasBreakdown =
+    Object.values(baseline.byService ?? {}).some((v) => v > 0) ||
+    Object.values(baseline.byProvider ?? {}).some((v) => v > 0);
+
   return (
     <Card>
-      <CardContent className="p-5 flex flex-col md:flex-row gap-4 md:items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{baseline.label}</span>
-            {baseline.isActive && (
-              <Badge variant="outline" className="text-[11px] border-emerald-300 text-emerald-700">
-                Ativo
-              </Badge>
-            )}
-            {baseline.source === "manual-input" ? (
-              <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-700 bg-amber-50">
-                Entrada manual
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-[11px]">{baseline.source}</Badge>
-            )}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {fmtDate(baseline.periodStart)} → {fmtDate(baseline.periodEnd)} ·
-            {baseline.months} {baseline.months === 1 ? "mês" : "meses"} · criado em {new Date(baseline.createdAt).toLocaleDateString("pt-BR")}
-          </div>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</div>
-            <div className="text-base font-semibold tabular-nums">
-              {formatCurrency(baseline.totalCost, baseline.currency)}
+      <CardContent className="p-5">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium">{baseline.label}</span>
+              {baseline.isActive && (
+                <Badge variant="outline" className="text-[11px] border-emerald-300 text-emerald-700">
+                  Ativo
+                </Badge>
+              )}
+              {baseline.source === "manual-input" ? (
+                <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-700 bg-amber-50">
+                  Entrada manual
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[11px]">{baseline.source}</Badge>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {fmtDate(baseline.periodStart)} → {fmtDate(baseline.periodEnd)} ·
+              {baseline.months} {baseline.months === 1 ? "mês" : "meses"} · criado em {new Date(baseline.createdAt).toLocaleDateString("pt-BR")}
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média / mês</div>
-            <div className="text-base font-semibold tabular-nums">
-              {formatCurrency(baseline.monthlyAvg, baseline.currency)}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total</div>
+                <div className="text-base font-semibold tabular-nums">
+                  {formatCurrency(baseline.totalCost, baseline.currency)}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Média / mês</div>
+                <div className="text-base font-semibold tabular-nums">
+                  {formatCurrency(baseline.monthlyAvg, baseline.currency)}
+                </div>
+              </div>
             </div>
+            {hasBreakdown && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground gap-1 shrink-0"
+                onClick={() => setExpanded((v) => !v)}
+                data-testid="baseline-toggle-details"
+              >
+                {expanded ? (
+                  <>Ocultar <ChevronUp className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>Ver detalhes <ChevronDown className="w-3.5 h-3.5" /></>
+                )}
+              </Button>
+            )}
           </div>
         </div>
+
+        {expanded && hasBreakdown && (
+          <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-6">
+            <BaselineBreakdownTable
+              title="Por serviço"
+              data={baseline.byService ?? {}}
+              currency={baseline.currency}
+              total={baseline.totalCost}
+            />
+            <BaselineBreakdownTable
+              title="Por provedor"
+              data={baseline.byProvider ?? {}}
+              currency={baseline.currency}
+              total={baseline.totalCost}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
