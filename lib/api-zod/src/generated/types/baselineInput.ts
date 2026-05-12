@@ -7,6 +7,7 @@
  */
 import type { BaselineInputCostType } from "./baselineInputCostType";
 import type { BaselineInputSource } from "./baselineInputSource";
+import type { BaselineManualEntry } from "./baselineManualEntry";
 
 export interface BaselineInput {
   label: string;
@@ -18,4 +19,6 @@ export interface BaselineInput {
   source?: BaselineInputSource;
   /** If true (default), mark this baseline as the active one for the tenant */
   setActive?: boolean;
+  /** Manual cost entries by provider/service. When provided, metrics are built from these values instead of querying FOCUS data. */
+  entries?: BaselineManualEntry[];
 }

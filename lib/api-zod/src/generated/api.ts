@@ -385,12 +385,26 @@ export const CreateBaselineBody = zod.object({
   periodStart: zod.string().describe("ISO date (YYYY-MM-DD), inclusive"),
   periodEnd: zod.string().describe("ISO date (YYYY-MM-DD), exclusive"),
   costType: zod.enum(["BilledCost", "EffectiveCost"]).optional(),
-  source: zod.enum(["auto", "manual"]).optional(),
+  source: zod.enum(["auto", "manual", "manual-input"]).optional(),
   setActive: zod
     .boolean()
     .optional()
     .describe(
       "If true (default), mark this baseline as the active one for the tenant",
+    ),
+  entries: zod
+    .array(
+      zod.object({
+        provider: zod.string().describe("Provider name (e.g. AWS, Azure, GCP)"),
+        service: zod.string().describe("Service or cost category label"),
+        monthlyValue: zod
+          .number()
+          .describe("Average monthly cost for this service"),
+      }),
+    )
+    .optional()
+    .describe(
+      "Manual cost entries by provider\/service. When provided, metrics are built from these values instead of querying FOCUS data.",
     ),
 });
 

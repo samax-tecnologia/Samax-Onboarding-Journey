@@ -12,4 +12,5 @@ export type BaselineInputSource =
 export const BaselineInputSource = {
   auto: "auto",
   manual: "manual",
+  "manual-input": "manual-input",
 } as const;

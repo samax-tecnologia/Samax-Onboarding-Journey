@@ -1112,7 +1112,13 @@ function BaselineRow({ baseline }: { baseline: Baseline }) {
                 Ativo
               </Badge>
             )}
-            <Badge variant="outline" className="text-[11px]">{baseline.source}</Badge>
+            {baseline.source === "manual-input" ? (
+              <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-700 bg-amber-50">
+                Entrada manual
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[11px]">{baseline.source}</Badge>
+            )}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
             {fmtDate(baseline.periodStart)} → {fmtDate(baseline.periodEnd)} ·
@@ -1138,6 +1144,12 @@ function BaselineRow({ baseline }: { baseline: Baseline }) {
   );
 }
 
+type ManualEntry = { id: string; provider: string; service: string; monthlyValue: string };
+
+function emptyEntry(): ManualEntry {
+  return { id: crypto.randomUUID(), provider: "", service: "", monthlyValue: "" };
+}
+
 function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { tenantId } = useTenant();
   const { data: filters } = useGetFocusFilters();
@@ -1148,18 +1160,42 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const [label, setLabel] = useState("Baseline 3M");
   const [start, setStart] = useState(def.start);
   const [end, setEnd] = useState(def.end);
+  const [mode, setMode] = useState<"focus" | "manual">("focus");
+  const [entries, setEntries] = useState<ManualEntry[]>([emptyEntry()]);
 
   useEffect(() => {
     if (!open) return;
     const d = defaultBaselineWindow(filters?.periodEnd);
     setStart(d.start);
     setEnd(d.end);
+    setMode("focus");
+    setEntries([emptyEntry()]);
+    setLabel("Baseline 3M");
   }, [open, filters?.periodEnd]);
+
+  const updateEntry = (id: string, field: keyof ManualEntry, value: string) => {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
+  };
+
+  const removeEntry = (id: string) => {
+    setEntries((prev) => (prev.length > 1 ? prev.filter((e) => e.id !== id) : prev));
+  };
+
+  const manualMonthlyTotal = entries.reduce((sum, e) => sum + (parseFloat(e.monthlyValue) || 0), 0);
 
   const onSubmit = async () => {
     if (!label.trim()) {
       toast({ title: "Informe um nome", variant: "destructive" });
       return;
+    }
+    if (mode === "manual") {
+      const valid = entries.every(
+        (e) => e.provider.trim() && e.service.trim() && parseFloat(e.monthlyValue) > 0,
+      );
+      if (!valid || entries.length === 0) {
+        toast({ title: "Preencha todos os campos de cada linha (custo > 0)", variant: "destructive" });
+        return;
+      }
     }
     try {
       await create.mutateAsync({
@@ -1168,6 +1204,16 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           label: label.trim(),
           periodStart: start,
           periodEnd: end,
+          ...(mode === "manual"
+            ? {
+                source: "manual-input" as const,
+                entries: entries.map((e) => ({
+                  provider: e.provider.trim(),
+                  service: e.service.trim(),
+                  monthlyValue: parseFloat(e.monthlyValue),
+                })),
+              }
+            : {}),
         },
       });
       qc.invalidateQueries({ queryKey: getListBaselinesQueryKey(tenantId) });
@@ -1180,34 +1226,132 @@ function BaselineWizardDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Novo baseline</DialogTitle>
           <DialogDescription>
-            Selecione o período de referência. Recomendado: 3 a 6 meses anteriores ao início da otimização.
+            Crie um baseline a partir dos dados de cobrança FOCUS ou insira os valores por serviço manualmente.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Nome</Label>
-            <Input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Ex: Baseline pré-Samax"
-              data-testid="baseline-label"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+
+        <Tabs value={mode} onValueChange={(v) => setMode(v as "focus" | "manual")}>
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="focus" className="flex-1" data-testid="baseline-mode-focus">
+              A partir de dados FOCUS
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex-1" data-testid="baseline-mode-manual">
+              Entrada manual
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Início</Label>
-              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} data-testid="baseline-start" />
+              <Label>Nome</Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Ex: Baseline pré-Samax"
+                data-testid="baseline-label"
+              />
             </div>
-            <div className="space-y-1.5">
-              <Label>Fim (exclusivo)</Label>
-              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} data-testid="baseline-end" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Início do período</Label>
+                <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} data-testid="baseline-start" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fim (exclusivo)</Label>
+                <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} data-testid="baseline-end" />
+              </div>
             </div>
           </div>
-        </div>
+
+          <TabsContent value="focus" className="mt-4">
+            <p className="text-sm text-muted-foreground">
+              Os custos serão calculados automaticamente a partir dos dados FOCUS do período selecionado.
+            </p>
+          </TabsContent>
+
+          <TabsContent value="manual" className="mt-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Informe o custo médio mensal por serviço/provedor. O total do período será calculado com base no intervalo de datas.
+            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Provedor</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead className="text-right">Custo/mês (USD)</TableHead>
+                  <TableHead className="w-8" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="p-1.5">
+                      <Input
+                        value={entry.provider}
+                        onChange={(e) => updateEntry(entry.id, "provider", e.target.value)}
+                        placeholder="AWS"
+                        className="h-8 text-sm"
+                        data-testid="manual-entry-provider"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1.5">
+                      <Input
+                        value={entry.service}
+                        onChange={(e) => updateEntry(entry.id, "service", e.target.value)}
+                        placeholder="Amazon EC2"
+                        className="h-8 text-sm"
+                        data-testid="manual-entry-service"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1.5">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={entry.monthlyValue}
+                        onChange={(e) => updateEntry(entry.id, "monthlyValue", e.target.value)}
+                        placeholder="0.00"
+                        className="h-8 text-sm text-right"
+                        data-testid="manual-entry-value"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => removeEntry(entry.id)}
+                        disabled={entries.length === 1}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEntries((prev) => [...prev, emptyEntry()])}
+                data-testid="add-manual-entry"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar linha
+              </Button>
+              <div className="text-sm text-muted-foreground">
+                Total mensal:{" "}
+                <span className="font-semibold text-foreground tabular-nums">
+                  {formatCurrency(manualMonthlyTotal, "USD")}
+                </span>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={onSubmit} disabled={create.isPending} data-testid="submit-baseline">

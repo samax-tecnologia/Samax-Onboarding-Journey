@@ -267,6 +267,15 @@ export interface Baseline {
   byProduct: BaselineByProduct;
 }
 
+export interface BaselineManualEntry {
+  /** Provider name (e.g. AWS, Azure, GCP) */
+  provider: string;
+  /** Service or cost category label */
+  service: string;
+  /** Average monthly cost for this service */
+  monthlyValue: number;
+}
+
 export type BaselineInputCostType =
   (typeof BaselineInputCostType)[keyof typeof BaselineInputCostType];
 
@@ -281,6 +290,7 @@ export type BaselineInputSource =
 export const BaselineInputSource = {
   auto: "auto",
   manual: "manual",
+  "manual-input": "manual-input",
 } as const;
 
 export interface BaselineInput {
@@ -293,6 +303,8 @@ export interface BaselineInput {
   source?: BaselineInputSource;
   /** If true (default), mark this baseline as the active one for the tenant */
   setActive?: boolean;
+  /** Manual cost entries by provider/service. When provided, metrics are built from these values instead of querying FOCUS data. */
+  entries?: BaselineManualEntry[];
 }
 
 export interface AppliedChange {

@@ -86,16 +86,59 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
   }
   const costType: CostType =
     parsed.data.costType === "BilledCost" ? "BilledCost" : "EffectiveCost";
-  const ds = await loadDataset(tenantId, resolved.tenantDataSource);
-  if (ds.monthlyRows.length === 0) {
-    res.status(409).json({ error: "no_data" });
-    return;
+
+  type BaselineMetrics = {
+    totalCost: number;
+    monthlyAvg: number;
+    months: number;
+    byService: Record<string, number>;
+    byCategory: Record<string, number>;
+    byProvider: Record<string, number>;
+    byTeam: Record<string, number>;
+    byProduct: Record<string, number>;
+  };
+
+  let m: BaselineMetrics;
+  let source: string;
+
+  const entries = parsed.data.entries;
+  if (entries && entries.length > 0) {
+    const s = start.getUTCFullYear() * 12 + start.getUTCMonth();
+    const e = end.getUTCFullYear() * 12 + end.getUTCMonth();
+    const months = Math.max(1, e - s);
+    const monthlyAvg = entries.reduce((acc, en) => acc + en.monthlyValue, 0);
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const byService: Record<string, number> = {};
+    const byProvider: Record<string, number> = {};
+    for (const en of entries) {
+      byService[en.service] = r2((byService[en.service] ?? 0) + en.monthlyValue * months);
+      byProvider[en.provider] = r2((byProvider[en.provider] ?? 0) + en.monthlyValue * months);
+    }
+    m = {
+      totalCost: r2(monthlyAvg * months),
+      monthlyAvg: r2(monthlyAvg),
+      months,
+      byService,
+      byCategory: {},
+      byProvider,
+      byTeam: {},
+      byProduct: {},
+    };
+    source = "manual-input";
+  } else {
+    const ds = await loadDataset(tenantId, resolved.tenantDataSource);
+    if (ds.monthlyRows.length === 0) {
+      res.status(409).json({ error: "no_data" });
+      return;
+    }
+    m = buildBaselineMetrics(ds, start, end, costType);
+    if (m.totalCost <= 0) {
+      res.status(409).json({ error: "no_cost_in_period" });
+      return;
+    }
+    source = parsed.data.source ?? "manual";
   }
-  const m = buildBaselineMetrics(ds, start, end, costType);
-  if (m.totalCost <= 0) {
-    res.status(409).json({ error: "no_cost_in_period" });
-    return;
-  }
+
   const setActive = parsed.data.setActive !== false;
   if (setActive) {
     await db
@@ -121,7 +164,7 @@ router.post("/tenants/:tenantId/baselines", async (req, res) => {
         byTeam: m.byTeam,
         byProduct: m.byProduct,
       },
-      source: parsed.data.source ?? "manual",
+      source,
       isActive: setActive ? "true" : "false",
     })
     .returning();

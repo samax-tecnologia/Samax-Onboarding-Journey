@@ -19,6 +19,7 @@ export * from "./baselineByTeam";
 export * from "./baselineInput";
 export * from "./baselineInputCostType";
 export * from "./baselineInputSource";
+export * from "./baselineManualEntry";
 export * from "./breakdownItem";
 export * from "./breakdownItemMeta";
 export * from "./connection";

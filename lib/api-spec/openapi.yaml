@@ -784,6 +784,16 @@ components:
           type: object
           additionalProperties: { type: number }
 
+    BaselineManualEntry:
+      type: object
+      required: [provider, service, monthlyValue]
+      properties:
+        provider: { type: string, description: "Provider name (e.g. AWS, Azure, GCP)" }
+        service: { type: string, description: "Service or cost category label" }
+        monthlyValue:
+          type: number
+          description: "Average monthly cost for this service"
+
     BaselineInput:
       type: object
       required: [label, periodStart, periodEnd]
@@ -796,10 +806,15 @@ components:
           enum: [BilledCost, EffectiveCost]
         source:
           type: string
-          enum: [auto, manual]
+          enum: [auto, manual, manual-input]
         setActive:
           type: boolean
           description: "If true (default), mark this baseline as the active one for the tenant"
+        entries:
+          type: array
+          description: "Manual cost entries by provider/service. When provided, metrics are built from these values instead of querying FOCUS data."
+          items:
+            $ref: "#/components/schemas/BaselineManualEntry"
 
     AppliedChange:
       type: object
