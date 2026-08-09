@@ -1,0 +1,152 @@
+{
+  "meta": {
+    "generatedAt": "2026-08-09T23:14:40.349Z",
+    "tsVersion": "reference",
+    "description": "Parity reference fixtures for Python → TS comparison"
+  },
+  "dataset": {
+    "startDate": "2025-09-01T00:00:00.000Z",
+    "endDate": "2026-09-01T00:00:00.000Z",
+    "totalRows": 9143,
+    "categories": [
+      "AI and Machine Learning",
+      "Analytics",
+      "Compute",
+      "Database",
+      "Networking",
+      "Storage"
+    ]
+  },
+  "prng": {
+    "seeds": [
+      569537409,
+      637500444,
+      890501393
+    ],
+    "outputs": [
+      [
+        0.1384,
+        0.6288,
+        0.6014
+      ],
+      [
+        0.0584,
+        0.639,
+        0.8751
+      ],
+      [
+        0.1365,
+        0.6158,
+        0.2657
+      ]
+    ]
+  },
+  "aggregation": {
+    "allProviders": {
+      "effectiveCost": 5697057.07,
+      "billedCost": 6135676.27
+    },
+    "awsOnly": {
+      "effectiveCost": 2324638.01,
+      "billedCost": 2499701.54,
+      "rowCount": 3366
+    },
+    "mlTeamOnly": {
+      "effectiveCost": 1453494.72,
+      "rowCount": 1901
+    },
+    "jan2026Only": {
+      "effectiveCost": 435825.58,
+      "rowCount": 794
+    },
+    "awsAndMl": {
+      "effectiveCost": 609702.61,
+      "rowCount": 686
+    }
+  },
+  "ymKey": [
+    "2026-01",
+    "2025-12",
+    "2025-03"
+  ],
+  "savings": {
+    "totalCount": 10,
+    "totalMonthlySavings": 42170,
+    "awsCount": 5,
+    "awsTotalMonthlySavings": 18790,
+    "mlCount": 1,
+    "mlTotalMonthlySavings": 1980,
+    "resourceIdPresence": [
+      {
+        "id": "sav-001",
+        "hasResourceId": true
+      },
+      {
+        "id": "sav-002",
+        "hasResourceId": true
+      },
+      {
+        "id": "sav-003",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-004",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-005",
+        "hasResourceId": true
+      },
+      {
+        "id": "sav-006",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-007",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-008",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-009",
+        "hasResourceId": false
+      },
+      {
+        "id": "sav-010",
+        "hasResourceId": false
+      }
+    ]
+  },
+  "breakdown": {
+    "byProvider": {
+      "AWS": 2324638.01,
+      "Azure": 1529161.51,
+      "GCP": 1843257.55
+    }
+  },
+  "timeseries": {
+    "byMonth": {
+      "2025-09": 422930.16,
+      "2025-10": 430821.52,
+      "2025-11": 482732.52,
+      "2025-12": 493611.68,
+      "2026-01": 435825.58,
+      "2026-02": 394342.29,
+      "2026-03": 444224.94,
+      "2026-04": 455514.08,
+      "2026-05": 515794.2,
+      "2026-06": 520575.6,
+      "2026-07": 553777.87,
+      "2026-08": 546906.63
+    }
+  },
+  "resourceIdSamples": [
+    "aws-amazon-ec2-platform-checkout",
+    "aws-amazon-ec2-platform-marketplace",
+    "credit-aws",
+    "tax-aws",
+    "aws-amazon-ec2-platform-mobile-app"
+  ]
+}
